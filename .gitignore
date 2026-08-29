@@ -1,0 +1,30 @@
+# Python / Django
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+env/
+venv/
+*.sqlite3
+apps/api/.env
+
+# Node / Next.js
+node_modules/
+.pnp
+.pnp.js
+apps/web/.env
+apps/web/.env.local
+apps/web/.env.development.local
+apps/web/.env.test.local
+apps/web/.env.production.local
+
+# Build outputs
+dist/
+build/
+apps/web/.next/
+apps/web/out/
+
+# IDE / OS
+.DS_Store
+.vscode/
+.idea/
