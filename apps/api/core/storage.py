@@ -13,9 +13,11 @@ class StorageClient:
         if self.use_local:
             os.makedirs(self.local_storage_path, exist_ok=True)
         else:
-            # Cloudflare R2 specific endpoint URL
-            endpoint_url = None
-            if settings.R2_ACCOUNT_ID:
+            # Check if endpoint URL is explicitly provided (e.g. for MinIO)
+            endpoint_url = getattr(settings, 'R2_ENDPOINT_URL', None)
+            
+            # Fallback to Cloudflare R2 format if ACCOUNT_ID is provided instead
+            if not endpoint_url and getattr(settings, 'R2_ACCOUNT_ID', None):
                 endpoint_url = f"https://{settings.R2_ACCOUNT_ID}.r2.cloudflarestorage.com"
 
             self.s3_client = boto3.client(
@@ -25,6 +27,16 @@ class StorageClient:
                 aws_secret_access_key=settings.R2_SECRET_ACCESS_KEY,
                 region_name='auto'  # R2 requires region to be 'auto'
             )
+            
+            # Automatically create bucket in local MinIO if it doesn't exist
+            if endpoint_url and 'localhost' in endpoint_url:
+                try:
+                    self.s3_client.head_bucket(Bucket=self.bucket)
+                except Exception:
+                    try:
+                        self.s3_client.create_bucket(Bucket=self.bucket)
+                    except Exception:
+                        pass
 
     def upload_file_obj(self, file_obj, original_filename):
         """Uploads a file object to R2 or Local Storage and returns the storage key."""

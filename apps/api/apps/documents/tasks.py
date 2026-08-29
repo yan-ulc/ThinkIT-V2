@@ -41,10 +41,10 @@ def process_document_task(document_id):
         # Process and save chunks
         document_chunks = []
         for i, chunk in enumerate(chunks):
-            # For this MVP/Sprint 3, we mock the 1536-dimensional embedding.
+            # For this MVP/Sprint 3, we mock the 384-dimensional embedding.
             # If you want to use a real model, call embeddings.embed_query(chunk.page_content)
-            # Make sure it outputs 1536 dimensions (like OpenAI text-embedding-ada-002)
-            mock_embedding = [random.uniform(-1, 1) for _ in range(1536)]
+            # Make sure it outputs 384 dimensions (like HuggingFace all-MiniLM-L6-v2)
+            mock_embedding = [random.uniform(-1, 1) for _ in range(384)]
             
             # Simple token count estimation (1 word ~ 1.3 tokens)
             token_count = int(len(chunk.page_content.split()) * 1.3)
