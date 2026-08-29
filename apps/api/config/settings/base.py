@@ -68,6 +68,25 @@ AUTH_PASSWORD_VALIDATORS = [
     {'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator'},
 ]
 
+PASSWORD_HASHERS = [
+    "django.contrib.auth.hashers.Argon2PasswordHasher",
+    "django.contrib.auth.hashers.PBKDF2PasswordHasher",
+]
+
+REST_FRAMEWORK = {
+    'DEFAULT_AUTHENTICATION_CLASSES': [
+        'core.authentication.JWTAuthentication',
+    ],
+    'EXCEPTION_HANDLER': 'core.exceptions.custom_exception_handler',
+    'DEFAULT_PAGINATION_CLASS': 'core.pagination.CustomPageNumberPagination',
+    'PAGE_SIZE': 20,
+}
+
+JWT_ACCESS_SECRET = env('JWT_ACCESS_SECRET', default='unsafe-jwt-secret')
+JWT_ACCESS_EXPIRES_MINUTES = env.int('JWT_ACCESS_EXPIRES_MINUTES', default=15)
+JWT_REFRESH_EXPIRES_DAYS = env.int('JWT_REFRESH_EXPIRES_DAYS', default=7)
+COOKIE_DOMAIN = env('COOKIE_DOMAIN', default='localhost')
+
 LANGUAGE_CODE = 'en-us'
 TIME_ZONE = 'UTC'
 USE_I18N = True
