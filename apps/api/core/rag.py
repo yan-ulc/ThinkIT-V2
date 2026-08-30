@@ -12,13 +12,13 @@ class RAGService:
         # Initialize Groq LLM
         self.llm = ChatGroq(
             temperature=0,
-            model_name="llama3-8b-8192", # Fast and capable
+            model_name="groq/compound", # Updated available model
             api_key=os.getenv('GROQ_API_KEY', getattr(settings, 'GROQ_API_KEY', ''))
         )
         
         # Initialize Google Embeddings
         api_key = os.getenv('GOOGLE_API_KEY', getattr(settings, 'GOOGLE_API_KEY', ''))
-        self.embeddings = GoogleGenerativeAIEmbeddings(model="models/embedding-001", google_api_key=api_key)
+        self.embeddings = GoogleGenerativeAIEmbeddings(model="models/text-embedding-004", google_api_key=api_key)
         
         # Define Prompt Template
         self.prompt = ChatPromptTemplate.from_template("""

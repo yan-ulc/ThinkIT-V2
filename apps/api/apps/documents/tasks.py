@@ -37,7 +37,7 @@ def process_document_task(document_id):
         
         # Initialize Google Embeddings
         api_key = os.getenv('GOOGLE_API_KEY', getattr(settings, 'GOOGLE_API_KEY', ''))
-        embeddings = GoogleGenerativeAIEmbeddings(model="models/embedding-001", google_api_key=api_key)
+        embeddings = GoogleGenerativeAIEmbeddings(model="models/text-embedding-004", google_api_key=api_key)
         
         # Extract content to embed in batch
         texts = [chunk.page_content for chunk in chunks]
