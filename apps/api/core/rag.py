@@ -3,7 +3,7 @@ from django.conf import settings
 from langchain_groq import ChatGroq
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.output_parsers import StrOutputParser
-from langchain_huggingface import HuggingFaceEmbeddings
+from langchain_google_genai import GoogleGenerativeAIEmbeddings
 from pgvector.django import L2Distance
 from apps.documents.models import DocumentChunk
 
@@ -16,9 +16,9 @@ class RAGService:
             api_key=os.getenv('GROQ_API_KEY', getattr(settings, 'GROQ_API_KEY', ''))
         )
         
-        # Initialize Embedding Model
-        model_name = getattr(settings, 'EMBEDDING_MODEL', 'all-MiniLM-L6-v2')
-        self.embeddings = HuggingFaceEmbeddings(model_name=model_name)
+        # Initialize Google Embeddings
+        api_key = os.getenv('GOOGLE_API_KEY', getattr(settings, 'GOOGLE_API_KEY', ''))
+        self.embeddings = GoogleGenerativeAIEmbeddings(model="models/embedding-001", google_api_key=api_key)
         
         # Define Prompt Template
         self.prompt = ChatPromptTemplate.from_template("""

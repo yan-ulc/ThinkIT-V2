@@ -8,6 +8,7 @@ from core.storage import StorageClient
 # LangChain imports
 from langchain_community.document_loaders import PyPDFLoader
 from langchain_text_splitters import RecursiveCharacterTextSplitter
+from langchain_google_genai import GoogleGenerativeAIEmbeddings
 
 @shared_task
 def process_document_task(document_id):
@@ -34,18 +35,19 @@ def process_document_task(document_id):
         )
         chunks = text_splitter.split_documents(pages)
         
-        # In a real app, initialize your embeddings model here.
-        # e.g., from langchain_openai import OpenAIEmbeddings
-        # embeddings = OpenAIEmbeddings()
+        # Initialize Google Embeddings
+        api_key = os.getenv('GOOGLE_API_KEY', getattr(settings, 'GOOGLE_API_KEY', ''))
+        embeddings = GoogleGenerativeAIEmbeddings(model="models/embedding-001", google_api_key=api_key)
+        
+        # Extract content to embed in batch
+        texts = [chunk.page_content for chunk in chunks]
+        
+        # Call Google API to get embeddings
+        embeddings_vectors = embeddings.embed_documents(texts)
         
         # Process and save chunks
         document_chunks = []
         for i, chunk in enumerate(chunks):
-            # For this MVP/Sprint 3, we mock the 1536-dimensional embedding.
-            # If you want to use a real model, call embeddings.embed_query(chunk.page_content)
-            # Make sure it outputs 1536 dimensions (like OpenAI text-embedding-ada-002)
-            mock_embedding = [random.uniform(-1, 1) for _ in range(1536)]
-            
             # Simple token count estimation (1 word ~ 1.3 tokens)
             token_count = int(len(chunk.page_content.split()) * 1.3)
             
@@ -55,7 +57,7 @@ def process_document_task(document_id):
                     user=doc.user,
                     chunk_index=i,
                     content=chunk.page_content,
-                    embedding=mock_embedding,
+                    embedding=embeddings_vectors[i],
                     token_count=token_count
                 )
             )

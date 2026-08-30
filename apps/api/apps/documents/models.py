@@ -36,7 +36,7 @@ class DocumentChunk(models.Model):
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
     chunk_index = models.IntegerField()
     content = models.TextField()
-    embedding = VectorField(dimensions=1536)
+    embedding = VectorField(dimensions=768)
     token_count = models.IntegerField()
     created_at = models.DateTimeField(auto_now_add=True)
 
