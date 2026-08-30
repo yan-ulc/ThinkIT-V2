@@ -18,7 +18,7 @@ class RAGService:
         
         # Initialize Google Embeddings
         api_key = os.getenv('GOOGLE_API_KEY', getattr(settings, 'GOOGLE_API_KEY', ''))
-        self.embeddings = GoogleGenerativeAIEmbeddings(model="models/text-embedding-004", google_api_key=api_key)
+        self.embeddings = GoogleGenerativeAIEmbeddings(model="models/gemini-embedding-2", google_api_key=api_key)
         
         # Define Prompt Template
         self.prompt = ChatPromptTemplate.from_template("""
