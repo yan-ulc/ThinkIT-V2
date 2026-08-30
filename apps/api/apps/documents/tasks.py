@@ -7,7 +7,7 @@ from core.storage import StorageClient
 
 # LangChain imports
 from langchain_community.document_loaders import PyPDFLoader
-from langchain.text_splitter import RecursiveCharacterTextSplitter
+from langchain_text_splitters import RecursiveCharacterTextSplitter
 
 @shared_task
 def process_document_task(document_id):

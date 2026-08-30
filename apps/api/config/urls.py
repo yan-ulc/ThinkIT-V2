@@ -26,4 +26,5 @@ urlpatterns = [
     path('health/', health_check),
     path('auth/', include('apps.accounts.urls')),
     path('documents/', include('apps.documents.urls')),
+    path('chat/', include('apps.chat.urls')),
 ]
