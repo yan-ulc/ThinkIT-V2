@@ -23,6 +23,7 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'rest_framework',
+    'corsheaders',
     'apps.accounts',
     'apps.documents',
     'apps.chat',
@@ -31,6 +32,7 @@ INSTALLED_APPS = [
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
+    'corsheaders.middleware.CorsMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
@@ -83,7 +85,7 @@ REST_FRAMEWORK = {
 }
 
 JWT_ACCESS_SECRET = env('JWT_ACCESS_SECRET', default='unsafe-jwt-secret')
-JWT_ACCESS_EXPIRES_MINUTES = env.int('JWT_ACCESS_EXPIRES_MINUTES', default=15)
+JWT_ACCESS_EXPIRES_MINUTES = env.int('JWT_ACCESS_EXPIRES_MINUTES', default=120)
 JWT_REFRESH_EXPIRES_DAYS = env.int('JWT_REFRESH_EXPIRES_DAYS', default=7)
 COOKIE_DOMAIN = env('COOKIE_DOMAIN', default='localhost')
 
@@ -102,3 +104,13 @@ CELERY_ACCEPT_CONTENT = ['json']
 CELERY_TASK_SERIALIZER = 'json'
 CELERY_RESULT_SERIALIZER = 'json'
 CELERY_TIMEZONE = 'UTC'
+
+# CORS
+CORS_ALLOWED_ORIGINS = env.list('CORS_ALLOWED_ORIGINS', default=['http://localhost:3000'])
+CORS_ALLOW_CREDENTIALS = True
+
+# Storage Configuration
+R2_ENDPOINT_URL = env('R2_ENDPOINT_URL', default=None)
+R2_ACCESS_KEY_ID = env('R2_ACCESS_KEY_ID', default='')
+R2_SECRET_ACCESS_KEY = env('R2_SECRET_ACCESS_KEY', default='')
+R2_BUCKET_NAME = env('R2_BUCKET_NAME', default='thinkit')

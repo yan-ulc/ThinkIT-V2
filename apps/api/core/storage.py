@@ -6,20 +6,26 @@ from botocore.exceptions import NoCredentialsError
 
 class StorageClient:
     def __init__(self):
-        self.bucket = settings.R2_BUCKET_NAME
+        self.bucket = getattr(settings, 'R2_BUCKET_NAME', 'thinkit')
         
-        # Cloudflare R2 specific endpoint URL
-        endpoint_url = None
-        if settings.R2_ACCOUNT_ID:
-            endpoint_url = f"https://{settings.R2_ACCOUNT_ID}.r2.cloudflarestorage.com"
+        endpoint_url = getattr(settings, 'R2_ENDPOINT_URL', None)
 
         self.s3_client = boto3.client(
             's3',
             endpoint_url=endpoint_url,
-            aws_access_key_id=settings.R2_ACCESS_KEY_ID,
-            aws_secret_access_key=settings.R2_SECRET_ACCESS_KEY,
+            aws_access_key_id=getattr(settings, 'R2_ACCESS_KEY_ID', ''),
+            aws_secret_access_key=getattr(settings, 'R2_SECRET_ACCESS_KEY', ''),
             region_name='auto'  # R2 requires region to be 'auto'
         )
+
+        # Ensure bucket exists (for MinIO local development)
+        try:
+            self.s3_client.head_bucket(Bucket=self.bucket)
+        except Exception:
+            try:
+                self.s3_client.create_bucket(Bucket=self.bucket)
+            except Exception:
+                pass
 
     def upload_file_obj(self, file_obj, original_filename):
         """Uploads a file object to R2 and returns the storage key."""

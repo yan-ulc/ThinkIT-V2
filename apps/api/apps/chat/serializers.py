@@ -15,4 +15,5 @@ class ChatSessionSerializer(serializers.ModelSerializer):
 
 class ChatRequestSerializer(serializers.Serializer):
     session_id = serializers.UUIDField(required=False, allow_null=True)
+    document_id = serializers.UUIDField(required=False, allow_null=True)
     message = serializers.CharField(required=True)

@@ -11,7 +11,11 @@ class ChatViewSet(viewsets.ModelViewSet):
     serializer_class = ChatSessionSerializer
     
     def get_queryset(self):
-        return ChatSession.objects.filter(user=self.request.user).order_by('-updated_at')
+        queryset = ChatSession.objects.filter(user=self.request.user).order_by('-updated_at')
+        document_id = self.request.query_params.get('document_id')
+        if document_id:
+            queryset = queryset.filter(document_id=document_id)
+        return queryset
 
     @action(detail=False, methods=['post'])
     def message(self, request):
@@ -19,6 +23,7 @@ class ChatViewSet(viewsets.ModelViewSet):
         serializer.is_valid(raise_exception=True)
         
         session_id = serializer.validated_data.get('session_id')
+        document_id = serializer.validated_data.get('document_id')
         user_message = serializer.validated_data['message']
         
         # Get or create session
@@ -30,7 +35,7 @@ class ChatViewSet(viewsets.ModelViewSet):
         else:
             # Generate a simple title from the first message
             title = user_message[:30] + '...' if len(user_message) > 30 else user_message
-            session = ChatSession.objects.create(user=request.user, title=title)
+            session = ChatSession.objects.create(user=request.user, document_id=document_id, title=title)
             
         # Save user message
         ChatMessage.objects.create(
@@ -45,7 +50,7 @@ class ChatViewSet(viewsets.ModelViewSet):
             answer, references = rag_service.generate_answer(request.user, user_message)
         except Exception as e:
             # Fallback or generic error handling
-            answer = "Maaf, terjadi kesalahan saat menghubungi AI atau mencari dokumen."
+            answer = f"Maaf, terjadi kesalahan teknis saat menghubungi AI: {str(e)}"
             references = []
             print(f"RAG Error: {e}")
             

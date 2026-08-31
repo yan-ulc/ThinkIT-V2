@@ -66,3 +66,35 @@ class DocumentViewSet(viewsets.ModelViewSet):
             })
         except Exception as e:
             return Response({'error': True, 'message': f'Failed to generate URL: {str(e)}'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+    @action(detail=False, methods=['get'])
+    def stream(self, request):
+        import redis
+        import json
+        from django.conf import settings
+        from django.http import StreamingHttpResponse
+
+        def event_stream():
+            user = request.user
+            # First send the current state
+            docs = Document.objects.filter(user=user).order_by('-created_at')
+            initial_data = DocumentSerializer(docs, many=True).data
+            yield f"data: {json.dumps(initial_data)}\n\n"
+
+            # Connect to Redis to listen for updates
+            r = redis.from_url(settings.CELERY_RESULT_BACKEND)
+            pubsub = r.pubsub()
+            pubsub.subscribe(f"user_{user.id}_docs")
+
+            try:
+                for message in pubsub.listen():
+                    if message['type'] == 'message':
+                        docs = Document.objects.filter(user=user).order_by('-created_at')
+                        new_data = DocumentSerializer(docs, many=True).data
+                        yield f"data: {json.dumps(new_data)}\n\n"
+            except Exception:
+                pass
+            finally:
+                pubsub.close()
+
+        return StreamingHttpResponse(event_stream(), content_type='text/event-stream')
