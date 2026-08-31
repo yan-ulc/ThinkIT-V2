@@ -35,15 +35,22 @@ def process_document_task(document_id):
         )
         chunks = text_splitter.split_documents(pages)
         
+        if not chunks:
+            raise ValueError("No extractable text found in this PDF. It might be a scanned image or empty.")
+        
         # Initialize Google Embeddings
         api_key = os.getenv('GOOGLE_API_KEY', getattr(settings, 'GOOGLE_API_KEY', ''))
-        embeddings = GoogleGenerativeAIEmbeddings(model="models/text-embedding-004", google_api_key=api_key)
+        embeddings = GoogleGenerativeAIEmbeddings(model="models/gemini-embedding-2", google_api_key=api_key)
         
         # Extract content to embed in batch
         texts = [chunk.page_content for chunk in chunks]
         
         # Call Google API to get embeddings
         embeddings_vectors = embeddings.embed_documents(texts)
+        
+        # Postgres is hardcoded to 1536 dimensions due to initial migration
+        # We must truncate the 3072-dimensional vector down to 1536
+        embeddings_vectors = [v[:1536] for v in embeddings_vectors]
         
         # Process and save chunks
         document_chunks = []
@@ -65,10 +72,6 @@ def process_document_task(document_id):
         # Bulk create chunks
         DocumentChunk.objects.bulk_create(document_chunks)
         
-        # Clean up temp file
-        if os.path.exists(temp_path):
-            os.remove(temp_path)
-            
         doc.status = Document.StatusChoices.READY
         doc.save(update_fields=['status'])
         
@@ -79,3 +82,8 @@ def process_document_task(document_id):
             doc.save(update_fields=['status', 'error_message'])
         # Log error in production
         raise e
+        
+    finally:
+        # Clean up temp file guaranteed
+        if 'temp_path' in locals() and os.path.exists(temp_path):
+            os.remove(temp_path)

@@ -1,26 +1,49 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { ArrowRight, Brain, Loader2 } from "lucide-react";
 import { motion } from "framer-motion";
 
+import { fetchApi } from "@/lib/api";
+
 export default function LoginPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [errorMsg, setErrorMsg] = useState("");
+  const [infoMsg, setInfoMsg] = useState("");
+
+  useEffect(() => {
+    if (searchParams.get("expired") === "1") {
+      setInfoMsg("Your session has ended. Please log in again.");
+      // Optional: Clean up URL
+      router.replace("/login");
+    }
+  }, [searchParams, router]);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
+    setErrorMsg("");
     
-    // TODO: Connect to Django API
-    setTimeout(() => {
-      setIsLoading(false);
+    try {
+      const res = await fetchApi("/auth/login/", {
+        method: "POST",
+        body: JSON.stringify({ email, password })
+      });
+      
+      // Store token
+      localStorage.setItem("access_token", res.data.access_token);
       router.push("/dashboard");
-    }, 1000);
+    } catch (err: any) {
+      setErrorMsg(err.message || "Failed to login");
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -47,6 +70,16 @@ export default function LoginPage() {
           </div>
 
           <form onSubmit={handleLogin} className="space-y-4">
+            {infoMsg && (
+              <div className="bg-blue-500/10 border border-blue-500/20 text-blue-400 text-sm px-4 py-3 rounded-xl">
+                {infoMsg}
+              </div>
+            )}
+            {errorMsg && (
+              <div className="bg-red-500/10 border border-red-500/20 text-red-400 text-sm px-4 py-3 rounded-xl">
+                {errorMsg}
+              </div>
+            )}
             <div className="space-y-1">
               <label className="text-sm font-medium text-gray-300 ml-1">Email</label>
               <input 

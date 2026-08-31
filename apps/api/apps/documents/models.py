@@ -36,7 +36,7 @@ class DocumentChunk(models.Model):
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
     chunk_index = models.IntegerField()
     content = models.TextField()
-    embedding = VectorField(dimensions=768)
+    embedding = VectorField(dimensions=1536)
     token_count = models.IntegerField()
     created_at = models.DateTimeField(auto_now_add=True)
 
@@ -54,3 +54,17 @@ class DocumentChunk(models.Model):
 
     def __str__(self):
         return f"Chunk {self.chunk_index} of {self.document.name}"
+
+import json
+import redis
+from django.db.models.signals import post_save
+from django.dispatch import receiver
+
+@receiver(post_save, sender=Document)
+def broadcast_document_update(sender, instance, **kwargs):
+    try:
+        r = redis.from_url(settings.CELERY_RESULT_BACKEND) # Using the existing redis url
+        # Just send a ping to the user's channel to trigger a refetch in the SSE view
+        r.publish(f"user_{instance.user_id}_docs", "updated")
+    except Exception as e:
+        pass # Best effort

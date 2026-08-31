@@ -6,22 +6,35 @@ import { useRouter } from "next/navigation";
 import { ArrowRight, Brain, Loader2 } from "lucide-react";
 import { motion } from "framer-motion";
 
+import { fetchApi } from "@/lib/api";
+
 export default function RegisterPage() {
   const router = useRouter();
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [errorMsg, setErrorMsg] = useState("");
 
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
+    setErrorMsg("");
     
-    // TODO: Connect to Django API
-    setTimeout(() => {
-      setIsLoading(false);
+    try {
+      const res = await fetchApi("/auth/register/", {
+        method: "POST",
+        body: JSON.stringify({ name, email, password })
+      });
+      
+      // Store token
+      localStorage.setItem("access_token", res.data.access_token);
       router.push("/dashboard");
-    }, 1000);
+    } catch (err: any) {
+      setErrorMsg(err.message || "Failed to register");
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -47,6 +60,11 @@ export default function RegisterPage() {
           </div>
 
           <form onSubmit={handleRegister} className="space-y-4">
+            {errorMsg && (
+              <div className="bg-red-500/10 border border-red-500/20 text-red-400 text-sm px-4 py-3 rounded-xl">
+                {errorMsg}
+              </div>
+            )}
             <div className="space-y-1">
               <label className="text-sm font-medium text-gray-300 ml-1">Full Name</label>
               <input 

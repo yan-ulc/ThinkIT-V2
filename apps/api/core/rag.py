@@ -12,7 +12,7 @@ class RAGService:
         # Initialize Groq LLM
         self.llm = ChatGroq(
             temperature=0,
-            model_name="groq/compound", # Updated available model
+            model_name="qwen/qwen3.8-27b",
             api_key=os.getenv('GROQ_API_KEY', getattr(settings, 'GROQ_API_KEY', ''))
         )
         
@@ -38,6 +38,7 @@ class RAGService:
     def generate_answer(self, user, question):
         # 1. Embed the question
         question_embedding = self.embeddings.embed_query(question)
+        question_embedding = question_embedding[:1536] # Truncate to match DB
         
         # 2. Vector Search in PostgreSQL using pgvector (L2 Distance)
         # Limit search to the specific user's documents

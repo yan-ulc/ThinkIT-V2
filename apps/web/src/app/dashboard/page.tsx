@@ -1,15 +1,103 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
-import { Brain, FileText, LogOut, MessageSquare, Plus, UploadCloud } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { Brain, FileText, LogOut, MessageSquare, Plus, UploadCloud, Loader2 } from "lucide-react";
 import { motion } from "framer-motion";
+import { fetchApi } from "@/lib/api";
 
 export default function DashboardPage() {
-  const [documents] = useState([
-    { id: 1, name: "Project_Blueprint.pdf", size: "2.4 MB", status: "READY" },
-    { id: 2, name: "Financial_Report_Q3.pdf", size: "1.1 MB", status: "PROCESSING" },
-  ]);
+  const router = useRouter();
+  const [documents, setDocuments] = useState<any[]>([]);
+  const [isUploading, setIsUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    let abortController = new AbortController();
+    
+    const streamDocuments = async () => {
+      const token = localStorage.getItem("access_token");
+      if (!token) return router.push("/login");
+
+      try {
+        // SSE requires importing API_URL, let's just use fetchApi as a base or write raw fetch
+        const response = await fetch("http://localhost:8000/api/v1/documents/stream/", {
+          headers: { 'Authorization': `Bearer ${token}` },
+          signal: abortController.signal
+        });
+        
+        if (!response.ok) {
+          if (response.status === 401) {
+            localStorage.removeItem("access_token");
+            router.push("/login?expired=1");
+          }
+          return;
+        }
+
+        const reader = response.body?.getReader();
+        const decoder = new TextDecoder();
+        let buffer = "";
+        
+        while (reader) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          
+          buffer += decoder.decode(value, { stream: true });
+          const lines = buffer.split('\n');
+          buffer = lines.pop() || ""; // Keep the incomplete line in buffer
+          
+          for (const line of lines) {
+            if (line.startsWith('data: ')) {
+              try {
+                const data = JSON.parse(line.slice(6));
+                setDocuments(data);
+              } catch (e) {}
+            }
+          }
+        }
+      } catch (err: any) {
+        if (err.name !== 'AbortError') console.error("Stream failed", err);
+      }
+    };
+
+    streamDocuments();
+
+    return () => abortController.abort();
+  }, [router]);
+
+  const handleLogout = async () => {
+    try {
+      await fetchApi("/auth/logout", { method: "POST" });
+    } catch (e) {}
+    localStorage.removeItem("access_token");
+    router.push("/");
+  };
+
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setIsUploading(true);
+    const formData = new FormData();
+    formData.append("file", file);
+    formData.append("name", file.name);
+    // Note: In real app, add Idempotency-Key header for this request
+
+    try {
+      await fetchApi("/documents/upload/", {
+        method: "POST",
+        body: formData,
+      });
+      // SSE will auto-update the list!
+    } catch (err) {
+      console.error("Upload failed", err);
+      alert("Failed to upload document");
+    } finally {
+      setIsUploading(false);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    }
+  };
 
   return (
     <div className="flex h-screen overflow-hidden">
@@ -28,7 +116,7 @@ export default function DashboardPage() {
         </nav>
 
         <div className="p-4 mt-auto border-t border-white/5">
-          <button className="flex items-center gap-3 text-gray-400 hover:text-white px-4 py-3 w-full transition-colors">
+          <button onClick={handleLogout} className="flex items-center gap-3 text-gray-400 hover:text-white px-4 py-3 w-full transition-colors">
             <LogOut className="w-5 h-5" />
             Sign Out
           </button>
@@ -49,16 +137,26 @@ export default function DashboardPage() {
           <motion.div 
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
+            onClick={() => fileInputRef.current?.click()}
             className="w-full glass-dark border border-dashed border-brand-500/50 rounded-3xl p-12 flex flex-col items-center justify-center text-center cursor-pointer hover:bg-white/[0.02] transition-colors mb-12"
           >
+            <input 
+              type="file" 
+              ref={fileInputRef} 
+              onChange={handleFileChange} 
+              accept=".pdf" 
+              className="hidden" 
+            />
             <div className="w-16 h-16 rounded-full bg-brand-500/20 flex items-center justify-center text-brand-400 mb-6">
-              <UploadCloud className="w-8 h-8" />
+              {isUploading ? <Loader2 className="w-8 h-8 animate-spin" /> : <UploadCloud className="w-8 h-8" />}
             </div>
-            <h3 className="text-xl font-bold mb-2">Upload a Document</h3>
+            <h3 className="text-xl font-bold mb-2">
+              {isUploading ? "Uploading..." : "Upload a Document"}
+            </h3>
             <p className="text-gray-400 text-sm max-w-sm mb-6">
               Drag and drop your PDF here, or click to browse. We'll read it and get it ready for chat.
             </p>
-            <button className="bg-white/10 hover:bg-white/20 text-white px-6 py-3 rounded-xl font-semibold transition-all">
+            <button className="bg-white/10 hover:bg-white/20 text-white px-6 py-3 rounded-xl font-semibold transition-all pointer-events-none">
               Select PDF File
             </button>
           </motion.div>
@@ -79,6 +177,8 @@ export default function DashboardPage() {
                     </div>
                     {doc.status === "READY" ? (
                       <span className="px-2 py-1 bg-green-500/10 text-green-400 text-xs font-semibold rounded-full border border-green-500/20">READY</span>
+                    ) : doc.status === "FAILED" ? (
+                      <span className="px-2 py-1 bg-red-500/10 text-red-400 text-xs font-semibold rounded-full border border-red-500/20">FAILED</span>
                     ) : (
                       <span className="px-2 py-1 bg-yellow-500/10 text-yellow-400 text-xs font-semibold rounded-full border border-yellow-500/20 animate-pulse">PROCESSING</span>
                     )}
