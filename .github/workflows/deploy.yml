@@ -1,0 +1,34 @@
+name: Deploy to AWS EC2
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    name: Deploy to EC2
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Execute deployment via SSH
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.AWS_EC2_HOST }}
+          username: ${{ secrets.AWS_EC2_USER }}
+          key: ${{ secrets.AWS_EC2_SSH_KEY }}
+          script: |
+            # Pindah ke direktori proyek (sesuaikan dengan path di EC2 Anda)
+            cd /home/${{ secrets.AWS_EC2_USER }}/ThinkIT-V2
+            
+            # Tarik kode terbaru dari branch main
+            git pull origin main
+            
+            # Bangun ulang dan jalankan container Docker di background menggunakan file prod
+            docker compose -f docker-compose.prod.yml up -d --build
+            
+            # Bersihkan image docker lama yang tidak terpakai agar server tidak penuh
+            docker image prune -f
