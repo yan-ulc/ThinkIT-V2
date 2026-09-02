@@ -38,9 +38,11 @@ services:
     env_file:
       - ./apps/api/.env
     environment:
-      - DB_HOST=postgres
+      - DATABASE_URL=postgres://thinkit:thinkit@postgres:5432/thinkit
       - REDIS_URL=redis://redis:6379/0
+      - CELERY_BROKER_URL=redis://redis:6379/1
       - MINIO_ENDPOINT=http://16.170.201.95:9000
+      - R2_ENDPOINT_URL=http://minio:9000
     depends_on:
       - postgres
       - redis
@@ -53,9 +55,11 @@ services:
     env_file:
       - ./apps/api/.env
     environment:
-      - DB_HOST=postgres
+      - DATABASE_URL=postgres://thinkit:thinkit@postgres:5432/thinkit
       - REDIS_URL=redis://redis:6379/0
+      - CELERY_BROKER_URL=redis://redis:6379/1
       - MINIO_ENDPOINT=http://16.170.201.95:9000
+      - R2_ENDPOINT_URL=http://minio:9000
     depends_on:
       - api
       - redis
