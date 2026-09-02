@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Brain, FileText, LogOut, MessageSquare, Plus, UploadCloud, Loader2 } from "lucide-react";
 import { motion } from "framer-motion";
-import { fetchApi } from "@/lib/api";
+import { fetchApi, API_URL } from "@/lib/api";
 
 export default function DashboardPage() {
   const router = useRouter();
@@ -22,7 +22,7 @@ export default function DashboardPage() {
 
       try {
         // SSE requires importing API_URL, let's just use fetchApi as a base or write raw fetch
-        const response = await fetch("http://localhost:8000/api/v1/documents/stream/", {
+        const response = await fetch(`${API_URL}/documents/stream/`, {
           headers: { 'Authorization': `Bearer ${token}` },
           signal: abortController.signal
         });
