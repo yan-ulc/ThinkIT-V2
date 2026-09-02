@@ -28,7 +28,7 @@ jobs:
             git pull origin main
             
             # Bangun ulang dan jalankan container Docker di background menggunakan file prod
-            docker compose -f docker-compose.prod.yml up -d --build
+            docker-compose -f docker-compose.prod.yml up -d --build
             
             # Bersihkan image docker lama yang tidak terpakai agar server tidak penuh
             docker image prune -f

@@ -191,6 +191,7 @@ dependencies = [
     { name = "langchain-google-genai" },
     { name = "langchain-groq" },
     { name = "langchain-huggingface" },
+    { name = "midtransclient" },
     { name = "pgvector" },
     { name = "psycopg", extra = ["binary"] },
     { name = "pyjwt" },
@@ -215,6 +216,7 @@ requires-dist = [
     { name = "langchain-google-genai", specifier = ">=4.3.7" },
     { name = "langchain-groq", specifier = ">=1.1.3" },
     { name = "langchain-huggingface", specifier = ">=1.2.2" },
+    { name = "midtransclient", specifier = ">=1.4.2" },
     { name = "pgvector", specifier = ">=0.5.0" },
     { name = "psycopg", extras = ["binary"], specifier = ">=3.3.4" },
     { name = "pyjwt", specifier = ">=2.13.0" },
@@ -1592,6 +1594,18 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/d6/54/cfe61301667036ec958cb99bd3efefba235e65cdeb9c84d24a8293ba1d90/mdurl-0.1.2.tar.gz", hash = "sha256:bb413d29f5eea38f31dd4754dd7377d4465116fb207585f97bf925588687c1ba", size = 8729, upload-time = "2022-08-14T12:40:10.846Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/b3/38/89ba8ad64ae25be8de66a6d463314cf1eb366222074cfda9ee839c56a4b4/mdurl-0.1.2-py3-none-any.whl", hash = "sha256:84008a41e51615a49fc9966191ff91509e3c40b939176e643fd50a5c2196b8f8", size = 9979, upload-time = "2022-08-14T12:40:09.779Z" },
+]
+
+[[package]]
+name = "midtransclient"
+version = "1.4.2"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "requests" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/38/85/abb72e161da315be01316002dbba26b53dda14a9ca3a78964ba47e69df00/midtransclient-1.4.2.tar.gz", hash = "sha256:0c562af79121d8d915a4bc93f4dca849837e4fbebc9a01c5528575ca6af953ed", size = 20676, upload-time = "2023-10-18T10:52:13.443Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/d8/fc/d71ae984d62a854a8f43291df6e18a8e1d0691465aeb4023b5af31e42803/midtransclient-1.4.2-py3-none-any.whl", hash = "sha256:37186bbddbbee078e3efde1b1b1f1a57fc9f52d7fd31b1ddc8b0de14ab7f90d6", size = 22294, upload-time = "2023-10-18T10:52:11.477Z" },
 ]
 
 [[package]]

@@ -27,6 +27,7 @@ INSTALLED_APPS = [
     'apps.accounts',
     'apps.documents',
     'apps.chat',
+    'apps.payments',
 ]
 
 MIDDLEWARE = [
@@ -114,3 +115,8 @@ R2_ENDPOINT_URL = env('R2_ENDPOINT_URL', default=None)
 R2_ACCESS_KEY_ID = env('R2_ACCESS_KEY_ID', default='')
 R2_SECRET_ACCESS_KEY = env('R2_SECRET_ACCESS_KEY', default='')
 R2_BUCKET_NAME = env('R2_BUCKET_NAME', default='thinkit')
+
+# Midtrans Configuration
+MIDTRANS_SERVER_KEY = env('MIDTRANS_SERVER_KEY', default='')
+MIDTRANS_CLIENT_KEY = env('MIDTRANS_CLIENT_KEY', default='')
+MIDTRANS_IS_PRODUCTION = env.bool('MIDTRANS_IS_PRODUCTION', default=False)
