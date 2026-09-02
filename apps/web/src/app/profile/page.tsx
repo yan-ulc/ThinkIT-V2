@@ -16,8 +16,8 @@ export default function ProfilePage() {
   useEffect(() => {
     const loadProfile = async () => {
       try {
-        const data = await fetchApi("/auth/me/");
-        setUser(data);
+        const response = await fetchApi("/auth/me/");
+        setUser(response.data);
       } catch (err) {
         console.error("Failed to load profile", err);
       } finally {

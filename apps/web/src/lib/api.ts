@@ -3,7 +3,7 @@ export const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000
 export async function fetchApi(endpoint: string, options: RequestInit = {}) {
   const token = typeof window !== 'undefined' ? localStorage.getItem('access_token') : null;
   
-  const isAuthRoute = endpoint.includes('/auth/');
+  const isAuthRoute = endpoint.includes('/auth/login') || endpoint.includes('/auth/register');
   
   const headers = {
     'Content-Type': 'application/json',
