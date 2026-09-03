@@ -61,9 +61,15 @@ class TestChat:
             title="Test Session"
         )
         
-        # Mock RAGService
-        mock_rag = mocker.patch('core.rag.RAGService.generate_answer')
-        mock_rag.return_value = ("Mocked AI Response", [{"page": 1, "content": "Mocked reference"}])
+        # Mock the entire RAGService class as imported in views.py.
+        # Patching only 'generate_answer' still lets __init__ run, which
+        # tries to instantiate ChatGroq and fails without a real GROQ_API_KEY.
+        mock_rag_class = mocker.patch('apps.chat.views.RAGService')
+        mock_rag_instance = mock_rag_class.return_value
+        mock_rag_instance.generate_answer.return_value = (
+            "Mocked AI Response",
+            [{"page": 1, "content": "Mocked reference"}]
+        )
         
         response = authenticated_client.post('/api/v1/chat/message/', {
             'session_id': str(session.id),

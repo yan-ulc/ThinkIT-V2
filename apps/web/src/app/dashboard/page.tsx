@@ -7,9 +7,17 @@ import { Brain, FileText, LogOut, MessageSquare, Plus, UploadCloud, Loader2 } fr
 import { motion } from "framer-motion";
 import { fetchApi, API_URL } from "@/lib/api";
 
+interface Document {
+  id: string;
+  name: string;
+  size: number;
+  status: "QUEUED" | "PROCESSING" | "READY" | "FAILED";
+  created_at: string;
+}
+
 export default function DashboardPage() {
   const router = useRouter();
-  const [documents, setDocuments] = useState<any[]>([]);
+  const [documents, setDocuments] = useState<Document[]>([]);
   const [isUploading, setIsUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -56,8 +64,8 @@ export default function DashboardPage() {
             }
           }
         }
-      } catch (err: any) {
-        if (err.name !== 'AbortError') console.error("Stream failed", err);
+      } catch (err) {
+        if (err instanceof Error && err.name !== 'AbortError') console.error("Stream failed", err);
       }
     };
 

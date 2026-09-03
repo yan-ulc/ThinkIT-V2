@@ -10,12 +10,17 @@ import remarkGfm from 'remark-gfm';
 import { useParams } from "next/navigation";
 import { fetchApi } from "@/lib/api";
 
+interface Message {
+  role: "user" | "assistant";
+  content: string;
+}
+
 export default function ChatPage() {
   const params = useParams();
   const documentId = params.id as string;
   const [input, setInput] = useState("");
   const [sessionId, setSessionId] = useState<string | null>(null);
-  const [messages, setMessages] = useState<any[]>([
+  const [messages, setMessages] = useState<Message[]>([
     { role: "assistant", content: "Hi there! I have read your document. What would you like to know about it?" }
   ]);
   const [isTyping, setIsTyping] = useState(false);
@@ -78,10 +83,11 @@ export default function ChatPage() {
         role: "assistant", 
         content: res.data?.ai_message?.content || "Sorry, I couldn't generate an answer." 
       }]);
-    } catch (err: any) {
+    } catch (err) {
+      const error = err instanceof Error ? err : new Error("Unknown error");
       setMessages(prev => [...prev, { 
-        role: "assistant", 
-        content: `Error: ${err.message || "Failed to get answer from API"}` 
+        role: "assistant" as const, 
+        content: `Error: ${error.message || "Failed to get answer from API"}` 
       }]);
     } finally {
       setIsTyping(false);
@@ -158,25 +164,27 @@ export default function ChatPage() {
                   <ReactMarkdown 
                     remarkPlugins={[remarkGfm]}
                     components={{
-                      p: ({node, ...props}) => <p className="mb-4 last:mb-0" {...props} />,
-                      ul: ({node, ...props}) => <ul className="list-disc pl-6 mb-4 space-y-1" {...props} />,
-                      ol: ({node, ...props}) => <ol className="list-decimal pl-6 mb-4 space-y-1" {...props} />,
-                      li: ({node, ...props}) => <li className="" {...props} />,
-                      h1: ({node, ...props}) => <h1 className="text-xl font-bold mb-4 mt-6 text-white" {...props} />,
-                      h2: ({node, ...props}) => <h2 className="text-lg font-bold mb-3 mt-5 text-white" {...props} />,
-                      h3: ({node, ...props}) => <h3 className="text-base font-bold mb-3 mt-4 text-white" {...props} />,
-                      strong: ({node, ...props}) => <strong className="font-bold text-white" {...props} />,
-                      a: ({node, ...props}) => <a className="text-brand-400 hover:underline" target="_blank" rel="noreferrer" {...props} />,
-                      code: ({node, inline, ...props}: any) => 
-                        inline 
-                          ? <code className="bg-black/40 px-1.5 py-0.5 rounded text-brand-300 font-mono text-xs" {...props} />
-                          : <div className="bg-black/60 p-4 rounded-xl border border-white/10 mb-4 overflow-x-auto"><code className="text-gray-300 font-mono text-xs leading-relaxed" {...props} /></div>,
-                      blockquote: ({node, ...props}) => <blockquote className="border-l-2 border-brand-500 pl-4 italic text-gray-400 mb-4" {...props} />,
-                      table: ({node, ...props}) => <div className="overflow-x-auto mb-4 border border-white/10 rounded-lg"><table className="w-full text-left border-collapse" {...props} /></div>,
-                      thead: ({node, ...props}) => <thead className="bg-white/5" {...props} />,
-                      th: ({node, ...props}) => <th className="border-b border-white/10 p-3 font-semibold text-white text-xs uppercase tracking-wider" {...props} />,
-                      td: ({node, ...props}) => <td className="border-b border-white/5 p-3 text-gray-300" {...props} />,
-                      tr: ({node, ...props}) => <tr className="last:border-0" {...props} />,
+                      p: ({...props}) => <p className="mb-4 last:mb-0" {...props} />,
+                      ul: ({...props}) => <ul className="list-disc pl-6 mb-4 space-y-1" {...props} />,
+                      ol: ({...props}) => <ol className="list-decimal pl-6 mb-4 space-y-1" {...props} />,
+                      li: ({...props}) => <li className="" {...props} />,
+                      h1: ({...props}) => <h1 className="text-xl font-bold mb-4 mt-6 text-white" {...props} />,
+                      h2: ({...props}) => <h2 className="text-lg font-bold mb-3 mt-5 text-white" {...props} />,
+                      h3: ({...props}) => <h3 className="text-base font-bold mb-3 mt-4 text-white" {...props} />,
+                      strong: ({...props}) => <strong className="font-bold text-white" {...props} />,
+                      a: ({...props}) => <a className="text-brand-400 hover:underline" target="_blank" rel="noreferrer" {...props} />,
+                      code: ({ className, children, ...props }) => {
+                        const isInline = !className?.includes('language-');
+                        return isInline
+                          ? <code className="bg-black/40 px-1.5 py-0.5 rounded text-brand-300 font-mono text-xs" {...props}>{children}</code>
+                          : <div className="bg-black/60 p-4 rounded-xl border border-white/10 mb-4 overflow-x-auto"><code className="text-gray-300 font-mono text-xs leading-relaxed" {...props}>{children}</code></div>;
+                      },
+                      blockquote: ({...props}) => <blockquote className="border-l-2 border-brand-500 pl-4 italic text-gray-400 mb-4" {...props} />,
+                      table: ({...props}) => <div className="overflow-x-auto mb-4 border border-white/10 rounded-lg"><table className="w-full text-left border-collapse" {...props} /></div>,
+                      thead: ({...props}) => <thead className="bg-white/5" {...props} />,
+                      th: ({...props}) => <th className="border-b border-white/10 p-3 font-semibold text-white text-xs uppercase tracking-wider" {...props} />,
+                      td: ({...props}) => <td className="border-b border-white/5 p-3 text-gray-300" {...props} />,
+                      tr: ({...props}) => <tr className="last:border-0" {...props} />,
                     }}
                   >
                     {msg.content}

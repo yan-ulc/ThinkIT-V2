@@ -5,15 +5,15 @@ export async function fetchApi(endpoint: string, options: RequestInit = {}) {
   
   const isAuthRoute = endpoint.includes('/auth/login') || endpoint.includes('/auth/register');
   
-  const headers = {
+  const headers: Record<string, string> = {
     'Content-Type': 'application/json',
     ...(token && !isAuthRoute ? { 'Authorization': `Bearer ${token}` } : {}),
-    ...options.headers,
+    ...(options.headers as Record<string, string> | undefined),
   };
 
   // Don't set Content-Type for FormData (file uploads)
   if (options.body instanceof FormData) {
-    delete (headers as any)['Content-Type'];
+    delete headers['Content-Type'];
   }
 
   // Django requires trailing slashes for POST requests, but we must be careful with query params

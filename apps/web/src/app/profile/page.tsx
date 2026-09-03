@@ -7,9 +7,16 @@ import { Brain, FileText, LogOut, User, Loader2, CreditCard } from "lucide-react
 import { motion } from "framer-motion";
 import { fetchApi } from "@/lib/api";
 
+interface UserProfile {
+  id: string;
+  email: string;
+  name: string;
+  created_at: string;
+}
+
 export default function ProfilePage() {
   const router = useRouter();
-  const [user, setUser] = useState<any>(null);
+  const [user, setUser] = useState<UserProfile | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isProcessingPayment, setIsProcessingPayment] = useState(false);
 
