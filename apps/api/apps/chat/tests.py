@@ -1,3 +1,42 @@
-from django.test import TestCase
+import pytest
+from rest_framework.test import APIClient
+from django.contrib.auth import get_user_model
+from rest_framework import status
+import uuid
 
-# Create your tests here.
+User = get_user_model()
+
+@pytest.fixture
+def api_client():
+    return APIClient()
+
+@pytest.fixture
+def authenticated_client(api_client, db):
+    user = User.objects.create_user(
+        email='testchat@example.com',
+        password='password123'
+    )
+    res = api_client.post('/api/v1/auth/login/', {
+        'email': 'testchat@example.com',
+        'password': 'password123'
+    }, format='json')
+    
+    token = res.data['data']['access_token']
+    api_client.credentials(HTTP_AUTHORIZATION='Bearer ' + token)
+    api_client.user = user
+    return api_client
+
+@pytest.mark.django_db
+class TestChat:
+    def test_list_chat_sessions_empty(self, authenticated_client):
+        # We need a random UUID for the document_id
+        doc_id = str(uuid.uuid4())
+        response = authenticated_client.get(f'/api/v1/chat/?document_id={doc_id}')
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data['error'] is False
+        assert len(response.data['data']) == 0
+
+    def test_unauthenticated_chat_access(self, api_client):
+        doc_id = str(uuid.uuid4())
+        response = api_client.get(f'/api/v1/chat/?document_id={doc_id}')
+        assert response.status_code == status.HTTP_403_FORBIDDEN

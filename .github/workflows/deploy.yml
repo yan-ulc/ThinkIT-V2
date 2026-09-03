@@ -1,4 +1,4 @@
-name: Deploy to AWS EC2
+name: CI/CD Pipeline
 
 on:
   push:
@@ -6,14 +6,97 @@ on:
       - main
 
 jobs:
-  deploy:
-    name: Deploy to EC2
+  ci-frontend:
+    name: Frontend CI (Lint & Build)
     runs-on: ubuntu-latest
-
+    defaults:
+      run:
+        working-directory: ./apps/web
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          
+      - name: Install pnpm
+        uses: pnpm/action-setup@v3
+        with:
+          version: 9
+          
+      - name: Install Dependencies
+        run: pnpm install --frozen-lockfile
+        
+      - name: Lint Code
+        run: pnpm lint
+        
+      - name: Typecheck & Build
+        run: pnpm build
 
+  ci-backend:
+    name: Backend CI (Checks)
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: pgvector/pgvector:pg16
+        env:
+          POSTGRES_DB: thinkit
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgrespassword
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    defaults:
+      run:
+        working-directory: ./apps/api
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+        
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          
+      - name: Install uv
+        uses: astral-sh/setup-uv@v3
+        
+      - name: Install Dependencies
+        run: uv sync
+        
+      - name: Django System Check
+        run: uv run manage.py check
+        env:
+          DATABASE_URL: postgres://postgres:postgrespassword@localhost:5432/thinkit
+          REDIS_URL: redis://localhost:6379/0
+          
+      - name: Run Pytest
+        run: uv run pytest
+        env:
+          DATABASE_URL: postgres://postgres:postgrespassword@localhost:5432/thinkit
+          REDIS_URL: redis://localhost:6379/0
+          GOOGLE_API_KEY: dummy_key_for_test
+
+  deploy:
+    name: Deploy to EC2
+    needs: [ci-frontend, ci-backend]
+    runs-on: ubuntu-latest
+    steps:
       - name: Execute deployment via SSH
         uses: appleboy/ssh-action@v1.0.3
         with:
@@ -21,14 +104,7 @@ jobs:
           username: ${{ secrets.AWS_EC2_USER }}
           key: ${{ secrets.AWS_EC2_SSH_KEY }}
           script: |
-            # Pindah ke direktori proyek (sesuaikan dengan path di EC2 Anda)
             cd /home/${{ secrets.AWS_EC2_USER }}/ThinkIT-V2
-            
-            # Tarik kode terbaru dari branch main
             git pull origin main
-            
-            # Bangun ulang dan jalankan container Docker di background menggunakan file prod
             docker-compose -f docker-compose.prod.yml up -d --build
-            
-            # Bersihkan image docker lama yang tidak terpakai agar server tidak penuh
             docker image prune -f
