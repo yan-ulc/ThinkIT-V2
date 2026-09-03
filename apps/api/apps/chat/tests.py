@@ -45,7 +45,6 @@ class TestChat:
         # Create a dummy chat session
         from apps.chat.models import ChatSession
         from apps.documents.models import Document
-        import apps.chat.services  # Import this to make it available for mocking
         
         doc = Document.objects.create(
             user=authenticated_client.user,
@@ -62,26 +61,15 @@ class TestChat:
             title="Test Session"
         )
         
-        # Mock GoogleGenerativeAIEmbeddings
-        mocker.patch('apps.chat.services.GoogleGenerativeAIEmbeddings.embed_query', return_value=[0.1] * 1536)
+        # Mock RAGService
+        mock_rag = mocker.patch('core.rag.RAGService.generate_answer')
+        mock_rag.return_value = ("Mocked AI Response", [{"page": 1, "content": "Mocked reference"}])
         
-        # Mock pgvector cosine distance search
-        # Since we don't have real chunks in test DB, we mock the DocumentChunk objects query
-        mock_qs = mocker.patch('apps.documents.models.DocumentChunk.objects.annotate')
-        mock_chunk = mocker.Mock()
-        mock_chunk.page_content = "Mocked content"
-        mock_chunk.chunk_index = 1
-        mock_qs.return_value.order_by.return_value.filter.return_value = [mock_chunk]
-        
-        # Mock ChatGoogleGenerativeAI
-        mock_chat = mocker.patch('apps.chat.services.ChatGoogleGenerativeAI.invoke')
-        mock_chat.return_value.content = "Mocked AI Response"
-        
-        response = authenticated_client.post('/api/v1/chat/messages/', {
+        response = authenticated_client.post('/api/v1/chat/message/', {
             'session_id': str(session.id),
             'message': 'Hello AI'
         }, format='json')
         
         assert response.status_code == status.HTTP_200_OK
-        assert response.data['data']['message'] == "Mocked AI Response"
-        assert len(response.data['data']['references']) == 1
+        assert response.data['data']['ai_message']['content'] == "Mocked AI Response"
+        assert len(response.data['data']['ai_message']['references']) == 1
