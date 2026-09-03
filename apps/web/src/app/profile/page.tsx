@@ -27,7 +27,7 @@ export default function ProfilePage() {
     loadProfile();
   }, []);
 
-  const handleLogout = async () => {
+  const handleLogout = async () => {  
     try {
       await fetchApi("/auth/logout/", { method: "POST" });
     } catch (e) {}
