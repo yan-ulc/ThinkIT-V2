@@ -7,9 +7,16 @@ import { Brain, FileText, LogOut, User, Loader2, CreditCard } from "lucide-react
 import { motion } from "framer-motion";
 import { fetchApi } from "@/lib/api";
 
+interface UserProfile {
+  id: string;
+  email: string;
+  name: string;
+  created_at: string;
+}
+
 export default function ProfilePage() {
   const router = useRouter();
-  const [user, setUser] = useState<any>(null);
+  const [user, setUser] = useState<UserProfile | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isProcessingPayment, setIsProcessingPayment] = useState(false);
 
@@ -27,10 +34,10 @@ export default function ProfilePage() {
     loadProfile();
   }, []);
 
-  const handleLogout = async () => {
+  const handleLogout = async () => {  
     try {
       await fetchApi("/auth/logout/", { method: "POST" });
-    } catch (e) {}
+    } catch {}
     localStorage.removeItem("access_token");
     router.push("/");
   };
@@ -97,7 +104,7 @@ export default function ProfilePage() {
                   <User className="w-12 h-12 text-brand-400" />
                 </div>
                 <div>
-                  <h2 className="text-3xl font-bold mb-1">{user.first_name} {user.last_name}</h2>
+                  <h2 className="text-3xl font-bold mb-1">{user.name}</h2>
                   <p className="text-gray-400">{user.email}</p>
                 </div>
               </div>

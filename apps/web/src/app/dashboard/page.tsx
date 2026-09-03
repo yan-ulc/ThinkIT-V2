@@ -7,14 +7,22 @@ import { Brain, FileText, LogOut, MessageSquare, Plus, UploadCloud, Loader2 } fr
 import { motion } from "framer-motion";
 import { fetchApi, API_URL } from "@/lib/api";
 
+interface Document {
+  id: string;
+  name: string;
+  size: number;
+  status: "QUEUED" | "PROCESSING" | "READY" | "FAILED";
+  created_at: string;
+}
+
 export default function DashboardPage() {
   const router = useRouter();
-  const [documents, setDocuments] = useState<any[]>([]);
+  const [documents, setDocuments] = useState<Document[]>([]);
   const [isUploading, setIsUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    let abortController = new AbortController();
+    const abortController = new AbortController();
     
     const streamDocuments = async () => {
       const token = localStorage.getItem("access_token");
@@ -52,12 +60,12 @@ export default function DashboardPage() {
               try {
                 const data = JSON.parse(line.slice(6));
                 setDocuments(data);
-              } catch (e) {}
+              } catch {}
             }
           }
         }
-      } catch (err: any) {
-        if (err.name !== 'AbortError') console.error("Stream failed", err);
+      } catch (err) {
+        if (err instanceof Error && err.name !== 'AbortError') console.error("Stream failed", err);
       }
     };
 
@@ -69,7 +77,7 @@ export default function DashboardPage() {
   const handleLogout = async () => {
     try {
       await fetchApi("/auth/logout", { method: "POST" });
-    } catch (e) {}
+    } catch {}
     localStorage.removeItem("access_token");
     router.push("/");
   };
@@ -158,7 +166,7 @@ export default function DashboardPage() {
               {isUploading ? "Uploading..." : "Upload a Document"}
             </h3>
             <p className="text-gray-400 text-sm max-w-sm mb-6">
-              Drag and drop your PDF here, or click to browse. We'll read it and get it ready for chat.
+              Drag and drop your PDF here, or click to browse. We&apos;ll read it and get it ready for chat.
             </p>
             <button className="bg-white/10 hover:bg-white/20 text-white px-6 py-3 rounded-xl font-semibold transition-all pointer-events-none">
               Select PDF File
@@ -173,7 +181,7 @@ export default function DashboardPage() {
           >
             <h2 className="text-xl font-bold mb-6">Recent Documents</h2>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-              {documents.map((doc, i) => (
+            {documents.map((doc) => (
                 <div key={doc.id} className="glass p-5 rounded-2xl flex flex-col border border-white/10 hover:border-brand-500/50 transition-colors group">
                   <div className="flex justify-between items-start mb-4">
                     <div className="p-3 bg-brand-500/10 rounded-xl text-brand-400">

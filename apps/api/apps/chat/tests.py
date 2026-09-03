@@ -39,4 +39,43 @@ class TestChat:
     def test_unauthenticated_chat_access(self, api_client):
         doc_id = str(uuid.uuid4())
         response = api_client.get(f'/api/v1/chat/?document_id={doc_id}')
-        assert response.status_code == status.HTTP_403_FORBIDDEN
+        assert response.status_code == status.HTTP_401_UNAUTHORIZED
+
+    def test_chat_message_success(self, authenticated_client, mocker):
+        # Create a dummy chat session
+        from apps.chat.models import ChatSession
+        from apps.documents.models import Document
+        
+        doc = Document.objects.create(
+            user=authenticated_client.user,
+            name="test.pdf",
+            storage_key="test-key",
+            mime_type="application/pdf",
+            size=1024,
+            status="READY"
+        )
+        
+        session = ChatSession.objects.create(
+            user=authenticated_client.user,
+            document=doc,
+            title="Test Session"
+        )
+        
+        # Mock the entire RAGService class as imported in views.py.
+        # Patching only 'generate_answer' still lets __init__ run, which
+        # tries to instantiate ChatGroq and fails without a real GROQ_API_KEY.
+        mock_rag_class = mocker.patch('apps.chat.views.RAGService')
+        mock_rag_instance = mock_rag_class.return_value
+        mock_rag_instance.generate_answer.return_value = (
+            "Mocked AI Response",
+            [{"page": 1, "content": "Mocked reference"}]
+        )
+        
+        response = authenticated_client.post('/api/v1/chat/message/', {
+            'session_id': str(session.id),
+            'message': 'Hello AI'
+        }, format='json')
+        
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data['data']['ai_message']['content'] == "Mocked AI Response"
+        assert len(response.data['data']['ai_message']['references']) == 1

@@ -15,11 +15,10 @@ function LoginForm() {
   const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
-  const [infoMsg, setInfoMsg] = useState("");
+  const [infoMsg] = useState(() => searchParams.get("expired") === "1" ? "Your session has ended. Please log in again." : "");
 
   useEffect(() => {
     if (searchParams.get("expired") === "1") {
-      setInfoMsg("Your session has ended. Please log in again.");
       router.replace("/login");
     }
   }, [searchParams, router]);
@@ -37,8 +36,9 @@ function LoginForm() {
       
       localStorage.setItem("access_token", res.data.access_token);
       router.push("/dashboard");
-    } catch (err: any) {
-      setErrorMsg(err.message || "Failed to login");
+    } catch (err) {
+      const error = err instanceof Error ? err : new Error('Failed to login');
+      setErrorMsg(error.message);
     } finally {
       setIsLoading(false);
     }
@@ -100,7 +100,7 @@ function LoginForm() {
       </form>
 
       <p className="text-center text-sm text-gray-400 mt-6">
-        Don't have an account?{" "}
+        Don&apos;t have an account?{" "}
         <Link href="/register" className="text-brand-400 hover:text-brand-300 font-medium">
           Create one
         </Link>
