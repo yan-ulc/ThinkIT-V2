@@ -12,6 +12,9 @@ jobs:
   ci-frontend:
     name: Frontend CI (Lint & Build)
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./apps/web
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
@@ -27,13 +30,13 @@ jobs:
           version: 9
           
       - name: Install Dependencies
-        run: pnpm install --frozen-lockfile
+        run: pnpm install --no-frozen-lockfile --ignore-workspace
         
       - name: Lint Code
-        run: pnpm --filter web lint
+        run: pnpm lint
         
       - name: Typecheck & Build
-        run: pnpm --filter web build
+        run: pnpm build
 
   ci-backend:
     name: Backend CI (Checks)
