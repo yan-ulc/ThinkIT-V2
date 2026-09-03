@@ -39,7 +39,7 @@ class TestChat:
     def test_unauthenticated_chat_access(self, api_client):
         doc_id = str(uuid.uuid4())
         response = api_client.get(f'/api/v1/chat/?document_id={doc_id}')
-        assert response.status_code == status.HTTP_403_FORBIDDEN
+        assert response.status_code == status.HTTP_401_UNAUTHORIZED
 
     def test_chat_message_success(self, authenticated_client, mocker):
         # Create a dummy chat session

@@ -37,7 +37,7 @@ export default function ProfilePage() {
   const handleLogout = async () => {  
     try {
       await fetchApi("/auth/logout/", { method: "POST" });
-    } catch (e) {}
+    } catch {}
     localStorage.removeItem("access_token");
     router.push("/");
   };

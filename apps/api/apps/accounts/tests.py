@@ -78,4 +78,4 @@ class TestAuthentication:
 
     def test_get_me_unauthenticated(self, api_client):
         response = api_client.get('/api/v1/auth/me/')
-        assert response.status_code == status.HTTP_403_FORBIDDEN
+        assert response.status_code == status.HTTP_401_UNAUTHORIZED

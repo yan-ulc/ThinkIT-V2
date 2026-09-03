@@ -36,7 +36,7 @@ class TestDocuments:
 
     def test_unauthenticated_access(self, api_client):
         response = api_client.get('/api/v1/documents/')
-        assert response.status_code == status.HTTP_403_FORBIDDEN
+        assert response.status_code == status.HTTP_401_UNAUTHORIZED
 
     def test_upload_invalid_mime_type(self, authenticated_client):
         from io import BytesIO
