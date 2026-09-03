@@ -15,8 +15,7 @@ def create_user(db):
         return User.objects.create_user(
             email=email,
             password=password,
-            first_name="Test",
-            last_name="User"
+            name="Test User"
         )
     return make_user
 
@@ -26,8 +25,7 @@ class TestAuthentication:
         response = api_client.post('/api/v1/auth/register/', {
             'email': 'newuser@example.com',
             'password': 'StrongPassword123!',
-            'first_name': 'New',
-            'last_name': 'User'
+            'name': 'New User'
         }, format='json')
         
         assert response.status_code == status.HTTP_201_CREATED

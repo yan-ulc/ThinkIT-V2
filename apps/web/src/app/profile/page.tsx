@@ -97,7 +97,7 @@ export default function ProfilePage() {
                   <User className="w-12 h-12 text-brand-400" />
                 </div>
                 <div>
-                  <h2 className="text-3xl font-bold mb-1">{user.first_name} {user.last_name}</h2>
+                  <h2 className="text-3xl font-bold mb-1">{user.name}</h2>
                   <p className="text-gray-400">{user.email}</p>
                 </div>
               </div>
