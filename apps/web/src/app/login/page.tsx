@@ -37,8 +37,9 @@ function LoginForm() {
       
       localStorage.setItem("access_token", res.data.access_token);
       router.push("/dashboard");
-    } catch (err: any) {
-      setErrorMsg(err.message || "Failed to login");
+    } catch (err) {
+      const error = err instanceof Error ? err : new Error('Failed to login');
+      setErrorMsg(error.message);
     } finally {
       setIsLoading(false);
     }

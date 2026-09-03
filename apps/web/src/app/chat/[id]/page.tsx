@@ -15,6 +15,14 @@ interface Message {
   content: string;
 }
 
+interface ChatMessageRaw {
+  id: string;
+  sender: "USER" | "AI";
+  content: string;
+  references?: unknown[];
+  created_at: string;
+}
+
 export default function ChatPage() {
   const params = useParams();
   const documentId = params.id as string;
@@ -34,8 +42,7 @@ export default function ChatPage() {
           const session = sessions[0];
           setSessionId(session.id);
           if (session.messages && session.messages.length > 0) {
-            const history = session.messages.flatMap((m: any) => {
-               // We format historical messages correctly. We know 'sender' is 'USER' or 'AI'
+            const history = session.messages.flatMap((m: ChatMessageRaw): Message[] => {
                if (m.sender === 'USER') return [{ role: 'user', content: m.content }];
                if (m.sender === 'AI') return [{ role: 'assistant', content: m.content }];
                return [];

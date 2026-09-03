@@ -30,8 +30,9 @@ export default function RegisterPage() {
       // Store token
       localStorage.setItem("access_token", res.data.access_token);
       router.push("/dashboard");
-    } catch (err: any) {
-      setErrorMsg(err.message || "Failed to register");
+    } catch (err) {
+      const error = err instanceof Error ? err : new Error('Failed to register');
+      setErrorMsg(error.message);
     } finally {
       setIsLoading(false);
     }

@@ -6,6 +6,13 @@ from .jwt import verify_access_token
 User = get_user_model()
 
 class JWTAuthentication(BaseAuthentication):
+    # Declaring a realm makes DRF include WWW-Authenticate: Bearer realm="api"
+    # in 401 responses. Without this, DRF downgrades AuthenticationFailed to 403.
+    www_authenticate_realm = 'api'
+
+    def authenticate_header(self, request):
+        return f'Bearer realm="{self.www_authenticate_realm}"'
+
     def authenticate(self, request):
         auth_header = request.headers.get('Authorization')
         if not auth_header:
