@@ -49,13 +49,13 @@ class TestDocuments:
         }, format='multipart')
         
         assert response.status_code == status.HTTP_400_BAD_REQUEST
-        assert "application/pdf" in response.data['message']
+        assert "Only PDF files are allowed" in str(response.data.get('error', response.data))
 
     def test_upload_pdf_success(self, authenticated_client, mocker):
         from django.core.files.uploadedfile import SimpleUploadedFile
         
         # Mock StorageClient
-        mocker.patch('core.storage.StorageClient.upload_fileobj', return_value='test-key')
+        mocker.patch('core.storage.StorageClient.upload_file_obj', return_value='test-key')
         
         # Mock Celery Task
         mock_task = mocker.patch('apps.documents.tasks.process_document_task.delay')

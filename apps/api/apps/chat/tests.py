@@ -45,6 +45,7 @@ class TestChat:
         # Create a dummy chat session
         from apps.chat.models import ChatSession
         from apps.documents.models import Document
+        import apps.chat.services  # Import this to make it available for mocking
         
         doc = Document.objects.create(
             user=authenticated_client.user,
