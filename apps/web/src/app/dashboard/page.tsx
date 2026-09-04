@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Brain, FileText, LogOut, MessageSquare, Plus, UploadCloud, Loader2, HardDrive, Layers, BarChart3 } from "lucide-react";
@@ -37,7 +37,7 @@ export default function DashboardPage() {
   const [isUploading, setIsUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const fetchAnalytics = async () => {
+  const fetchAnalytics = useCallback(async () => {
     try {
       const res = await fetchApi("/documents/analytics/");
       if (res && res.data) {
@@ -48,16 +48,16 @@ export default function DashboardPage() {
     } finally {
       setIsLoadingAnalytics(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
     const abortController = new AbortController();
-    
-    fetchAnalytics();
 
     const streamDocuments = async () => {
       const token = localStorage.getItem("access_token");
       if (!token) return router.push("/login");
+
+      await fetchAnalytics();
 
       try {
         // SSE requires importing API_URL, let's just use fetchApi as a base or write raw fetch
