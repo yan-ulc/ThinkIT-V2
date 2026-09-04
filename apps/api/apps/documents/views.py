@@ -15,7 +15,11 @@ class DocumentViewSet(viewsets.ModelViewSet):
     serializer_class = DocumentSerializer
     
     def get_queryset(self):
-        return Document.objects.filter(user=self.request.user).order_by('-created_at')
+        queryset = Document.objects.filter(user=self.request.user).order_by('-created_at')
+        search = self.request.query_params.get('search')
+        if search:
+            queryset = queryset.filter(name__icontains=search.strip())
+        return queryset
 
     @action(detail=False, methods=['post'], parser_classes=[MultiPartParser, FormParser])
     def upload(self, request):
