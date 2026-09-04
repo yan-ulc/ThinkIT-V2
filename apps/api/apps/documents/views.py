@@ -4,7 +4,7 @@ from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.parsers import MultiPartParser, FormParser
 from django.db.models import Sum
-from .models import Document, DocumentChunk
+from .models import Document
 from .serializers import DocumentSerializer, DocumentUploadSerializer
 from .tasks import process_document_task
 from core.storage import StorageClient
@@ -110,15 +110,11 @@ class DocumentViewSet(viewsets.ModelViewSet):
         total_storage_bytes = storage_agg['total_bytes'] or 0
         storage_used_mb = round(total_storage_bytes / (1024 * 1024), 2)
 
-        total_chunks = DocumentChunk.objects.filter(user=user).count()
-
-        status_counts = {
-            'ready': user_docs.filter(status=Document.StatusChoices.READY).count(),
-            'processing': user_docs.filter(status=Document.StatusChoices.PROCESSING).count(),
-            'queued': user_docs.filter(status=Document.StatusChoices.QUEUED).count(),
-            'failed': user_docs.filter(status=Document.StatusChoices.FAILED).count(),
-            'uploading': user_docs.filter(status=Document.StatusChoices.UPLOADING).count(),
-        }
+        from apps.chat.models import ChatMessage
+        ai_queries_used = ChatMessage.objects.filter(
+            session__user=user,
+            sender=ChatMessage.SenderChoices.USER
+        ).count()
 
         return Response({
             'error': False,
@@ -127,7 +123,6 @@ class DocumentViewSet(viewsets.ModelViewSet):
                 'total_documents': total_documents,
                 'total_storage_bytes': total_storage_bytes,
                 'storage_used_mb': storage_used_mb,
-                'total_chunks': total_chunks,
-                'status_counts': status_counts,
+                'ai_queries_used': ai_queries_used,
             }
         }, status=status.HTTP_200_OK)

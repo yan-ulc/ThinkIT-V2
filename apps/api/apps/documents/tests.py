@@ -2,7 +2,8 @@ import pytest
 from rest_framework.test import APIClient
 from django.contrib.auth import get_user_model
 from rest_framework import status
-from apps.documents.models import Document, DocumentChunk
+from apps.documents.models import Document
+from apps.chat.models import ChatSession, ChatMessage
 
 User = get_user_model()
 
@@ -79,14 +80,7 @@ class TestDocuments:
         assert data['total_documents'] == 0
         assert data['total_storage_bytes'] == 0
         assert data['storage_used_mb'] == 0.0
-        assert data['total_chunks'] == 0
-        assert data['status_counts'] == {
-            'ready': 0,
-            'processing': 0,
-            'queued': 0,
-            'failed': 0,
-            'uploading': 0,
-        }
+        assert data['ai_queries_used'] == 0
 
     def test_analytics_with_data(self, authenticated_client):
         user = authenticated_client.user
@@ -114,21 +108,22 @@ class TestDocuments:
             size=524288,
             status=Document.StatusChoices.FAILED
         )
-        DocumentChunk.objects.create(
-            document=doc1,
-            user=user,
-            chunk_index=0,
-            content='Test chunk 1',
-            embedding=[0.0] * 1536,
-            token_count=100
+
+        session = ChatSession.objects.create(user=user, document=doc1, title='Test Session')
+        ChatMessage.objects.create(
+            session=session,
+            sender=ChatMessage.SenderChoices.USER,
+            content='What is this document about?'
         )
-        DocumentChunk.objects.create(
-            document=doc1,
-            user=user,
-            chunk_index=1,
-            content='Test chunk 2',
-            embedding=[0.0] * 1536,
-            token_count=150
+        ChatMessage.objects.create(
+            session=session,
+            sender=ChatMessage.SenderChoices.AI,
+            content='This document is about...'
+        )
+        ChatMessage.objects.create(
+            session=session,
+            sender=ChatMessage.SenderChoices.USER,
+            content='Can you summarize it?'
         )
 
         response = authenticated_client.get('/api/v1/documents/analytics/')
@@ -138,12 +133,7 @@ class TestDocuments:
         assert data['total_documents'] == 3
         assert data['total_storage_bytes'] == 1048576 + 2097152 + 524288
         assert data['storage_used_mb'] == 3.5
-        assert data['total_chunks'] == 2
-        assert data['status_counts']['ready'] == 1
-        assert data['status_counts']['processing'] == 1
-        assert data['status_counts']['failed'] == 1
-        assert data['status_counts']['queued'] == 0
-        assert data['status_counts']['uploading'] == 0
+        assert data['ai_queries_used'] == 2
 
     def test_analytics_user_isolation(self, authenticated_client):
         other_user = User.objects.create_user(
@@ -158,13 +148,11 @@ class TestDocuments:
             size=5000000,
             status=Document.StatusChoices.READY
         )
-        DocumentChunk.objects.create(
-            document=other_doc,
-            user=other_user,
-            chunk_index=0,
-            content='Other user chunk',
-            embedding=[0.0] * 1536,
-            token_count=80
+        other_session = ChatSession.objects.create(user=other_user, document=other_doc, title='Other Session')
+        ChatMessage.objects.create(
+            session=other_session,
+            sender=ChatMessage.SenderChoices.USER,
+            content='Other user question'
         )
 
         response = authenticated_client.get('/api/v1/documents/analytics/')
@@ -172,7 +160,7 @@ class TestDocuments:
         data = response.data['data']
         assert data['total_documents'] == 0
         assert data['total_storage_bytes'] == 0
-        assert data['total_chunks'] == 0
+        assert data['ai_queries_used'] == 0
 
     def test_analytics_unauthenticated(self, api_client):
         response = api_client.get('/api/v1/documents/analytics/')
