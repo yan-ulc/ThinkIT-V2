@@ -40,6 +40,61 @@ class TestDocuments:
         response = api_client.get('/api/v1/documents/')
         assert response.status_code == status.HTTP_401_UNAUTHORIZED
 
+    def test_search_documents_by_name(self, authenticated_client):
+        user = authenticated_client.user
+        Document.objects.create(
+            user=user,
+            name='math_calculus_report.pdf',
+            storage_key='k_math',
+            mime_type='application/pdf',
+            size=1024,
+            status=Document.StatusChoices.READY
+        )
+        Document.objects.create(
+            user=user,
+            name='biology_genetics_notes.pdf',
+            storage_key='k_bio',
+            mime_type='application/pdf',
+            size=2048,
+            status=Document.StatusChoices.READY
+        )
+        Document.objects.create(
+            user=user,
+            name='chemistry_organic_quiz.pdf',
+            storage_key='k_chem',
+            mime_type='application/pdf',
+            size=4096,
+            status=Document.StatusChoices.READY
+        )
+
+        # 1. Exact / substring match
+        res = authenticated_client.get('/api/v1/documents/?search=calculus')
+        assert res.status_code == status.HTTP_200_OK
+        assert len(res.data['data']) == 1
+        assert res.data['data'][0]['name'] == 'math_calculus_report.pdf'
+
+        # 2. Case-insensitive match
+        res_ci = authenticated_client.get('/api/v1/documents/?search=GENETICS')
+        assert res_ci.status_code == status.HTTP_200_OK
+        assert len(res_ci.data['data']) == 1
+        assert res_ci.data['data'][0]['name'] == 'biology_genetics_notes.pdf'
+
+        # 3. No match found
+        res_none = authenticated_client.get('/api/v1/documents/?search=physics')
+        assert res_none.status_code == status.HTTP_200_OK
+        assert len(res_none.data['data']) == 0
+
+        # 4. Search with whitespace trimming
+        res_ws = authenticated_client.get('/api/v1/documents/?search=  organic  ')
+        assert res_ws.status_code == status.HTTP_200_OK
+        assert len(res_ws.data['data']) == 1
+        assert res_ws.data['data'][0]['name'] == 'chemistry_organic_quiz.pdf'
+
+        # 5. Empty search string returns all docs
+        res_empty = authenticated_client.get('/api/v1/documents/?search=')
+        assert res_empty.status_code == status.HTTP_200_OK
+        assert len(res_empty.data['data']) == 3
+
     def test_upload_invalid_mime_type(self, authenticated_client):
         from io import BytesIO
         from django.core.files.uploadedfile import SimpleUploadedFile

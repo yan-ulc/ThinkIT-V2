@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Brain, FileText, LogOut, MessageSquare, Plus, UploadCloud, Loader2, HardDrive, Sparkles } from "lucide-react";
+import { Brain, FileText, LogOut, MessageSquare, Plus, UploadCloud, Loader2, HardDrive, Sparkles, Search, X } from "lucide-react";
 import { motion } from "framer-motion";
 import { fetchApi, API_URL } from "@/lib/api";
 
@@ -28,7 +28,16 @@ export default function DashboardPage() {
   const [analytics, setAnalytics] = useState<DocumentAnalytics | null>(null);
   const [isLoadingAnalytics, setIsLoadingAnalytics] = useState(true);
   const [isUploading, setIsUploading] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [debouncedSearchQuery, setDebouncedSearchQuery] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearchQuery(searchQuery.trim());
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
 
   const fetchAnalytics = useCallback(async () => {
     try {
@@ -97,7 +106,7 @@ export default function DashboardPage() {
     streamDocuments();
 
     return () => abortController.abort();
-  }, [router]);
+  }, [router, fetchAnalytics]);
 
   const handleLogout = async () => {
     try {
@@ -131,6 +140,18 @@ export default function DashboardPage() {
       setIsUploading(false);
       if (fileInputRef.current) fileInputRef.current.value = "";
     }
+  };
+
+  const filteredDocuments = documents.filter((doc) =>
+    doc.name.toLowerCase().includes(debouncedSearchQuery.toLowerCase())
+  );
+
+  const formatFileSize = (bytes: number) => {
+    if (typeof bytes !== "number" || isNaN(bytes) || bytes === 0) return "0 KB";
+    if (bytes >= 1048576) {
+      return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+    }
+    return `${Math.round(bytes / 1024)} KB`;
   };
 
   return (
@@ -263,46 +284,109 @@ export default function DashboardPage() {
             </button>
           </motion.div>
 
-          {/* Document List */}
+          {/* Document List Header & Search */}
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ delay: 0.2 }}
           >
-            <h2 className="text-xl font-bold mb-6">Recent Documents</h2>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-            {documents.map((doc) => (
-                <div key={doc.id} className="glass p-5 rounded-2xl flex flex-col border border-white/10 hover:border-brand-500/50 transition-colors group">
-                  <div className="flex justify-between items-start mb-4">
-                    <div className="p-3 bg-brand-500/10 rounded-xl text-brand-400">
-                      <FileText className="w-6 h-6" />
-                    </div>
-                    {doc.status === "READY" ? (
-                      <span className="px-2 py-1 bg-green-500/10 text-green-400 text-xs font-semibold rounded-full border border-green-500/20">READY</span>
-                    ) : doc.status === "FAILED" ? (
-                      <span className="px-2 py-1 bg-red-500/10 text-red-400 text-xs font-semibold rounded-full border border-red-500/20">FAILED</span>
-                    ) : (
-                      <span className="px-2 py-1 bg-yellow-500/10 text-yellow-400 text-xs font-semibold rounded-full border border-yellow-500/20 animate-pulse">PROCESSING</span>
-                    )}
-                  </div>
-                  
-                  <h4 className="font-semibold text-lg truncate mb-1">{doc.name}</h4>
-                  <p className="text-sm text-gray-500 mb-6">{doc.size}</p>
-                  
-                  <Link 
-                    href={`/chat/${doc.id}`}
-                    className={`mt-auto flex items-center justify-center gap-2 w-full py-3 rounded-xl font-semibold transition-all ${
-                      doc.status === "READY" 
-                        ? "bg-brand-600 hover:bg-brand-500 text-white" 
-                        : "bg-white/5 text-gray-500 pointer-events-none"
-                    }`}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+              <div className="flex items-center gap-3">
+                <h2 className="text-xl font-bold">Recent Documents</h2>
+                {debouncedSearchQuery && (
+                  <span className="text-xs px-2.5 py-1 rounded-full bg-brand-500/10 text-brand-400 border border-brand-500/20 font-medium">
+                    {filteredDocuments.length} {filteredDocuments.length === 1 ? "match" : "matches"}
+                  </span>
+                )}
+              </div>
+
+              {/* Real-Time Search Bar */}
+              <div className="relative w-full sm:w-72">
+                <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
+                <input
+                  type="text"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder="Search documents by name..."
+                  className="w-full pl-10 pr-9 py-2 bg-white/5 border border-white/10 rounded-xl text-sm text-white placeholder-gray-500 focus:outline-none focus:border-brand-500/50 focus:ring-1 focus:ring-brand-500/50 transition-all"
+                />
+                {searchQuery && (
+                  <button
+                    type="button"
+                    onClick={() => setSearchQuery("")}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-white p-0.5 rounded-full hover:bg-white/10 transition-colors"
+                    aria-label="Clear search"
                   >
-                    <MessageSquare className="w-4 h-4" />
-                    Chat with PDF
-                  </Link>
-                </div>
-              ))}
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                )}
+              </div>
             </div>
+
+            {/* Document Grid or Empty State */}
+            {filteredDocuments.length > 0 ? (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                {filteredDocuments.map((doc) => (
+                  <div key={doc.id} className="glass p-5 rounded-2xl flex flex-col border border-white/10 hover:border-brand-500/50 transition-colors group">
+                    <div className="flex justify-between items-start mb-4">
+                      <div className="p-3 bg-brand-500/10 rounded-xl text-brand-400">
+                        <FileText className="w-6 h-6" />
+                      </div>
+                      {doc.status === "READY" ? (
+                        <span className="px-2 py-1 bg-green-500/10 text-green-400 text-xs font-semibold rounded-full border border-green-500/20">READY</span>
+                      ) : doc.status === "FAILED" ? (
+                        <span className="px-2 py-1 bg-red-500/10 text-red-400 text-xs font-semibold rounded-full border border-red-500/20">FAILED</span>
+                      ) : (
+                        <span className="px-2 py-1 bg-yellow-500/10 text-yellow-400 text-xs font-semibold rounded-full border border-yellow-500/20 animate-pulse">PROCESSING</span>
+                      )}
+                    </div>
+                    
+                    <h4 className="font-semibold text-lg truncate mb-1" title={doc.name}>{doc.name}</h4>
+                    <p className="text-sm text-gray-500 mb-6">{formatFileSize(doc.size)}</p>
+                    
+                    <Link 
+                      href={`/chat/${doc.id}`}
+                      className={`mt-auto flex items-center justify-center gap-2 w-full py-3 rounded-xl font-semibold transition-all ${
+                        doc.status === "READY" 
+                          ? "bg-brand-600 hover:bg-brand-500 text-white" 
+                          : "bg-white/5 text-gray-500 pointer-events-none"
+                      }`}
+                    >
+                      <MessageSquare className="w-4 h-4" />
+                      Chat with PDF
+                    </Link>
+                  </div>
+                ))}
+              </div>
+            ) : debouncedSearchQuery ? (
+              /* Empty Search Result State */
+              <div className="glass p-12 rounded-2xl border border-white/10 text-center flex flex-col items-center justify-center">
+                <div className="w-14 h-14 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center text-gray-400 mb-4">
+                  <Search className="w-7 h-7 text-gray-400" />
+                </div>
+                <h3 className="text-lg font-bold text-white mb-1">No documents found</h3>
+                <p className="text-sm text-gray-400 max-w-sm mb-6">
+                  No documents matched &ldquo;<span className="text-brand-300 font-medium">{debouncedSearchQuery}</span>&rdquo;. Check your spelling or try another keyword.
+                </p>
+                <button
+                  onClick={() => setSearchQuery("")}
+                  className="px-4 py-2 bg-brand-600 hover:bg-brand-500 text-white rounded-xl text-sm font-medium transition-all"
+                >
+                  Clear Search
+                </button>
+              </div>
+            ) : (
+              /* Empty Document List State */
+              <div className="glass p-12 rounded-2xl border border-white/10 text-center flex flex-col items-center justify-center">
+                <div className="w-14 h-14 rounded-2xl bg-brand-500/10 text-brand-400 flex items-center justify-center mb-4">
+                  <FileText className="w-7 h-7" />
+                </div>
+                <h3 className="text-lg font-bold text-white mb-1">No documents uploaded yet</h3>
+                <p className="text-sm text-gray-400 max-w-sm">
+                  Upload your first PDF document above to start interacting with ThinkIT AI.
+                </p>
+              </div>
+            )}
           </motion.div>
         </div>
       </main>
