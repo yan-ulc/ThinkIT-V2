@@ -1106,167 +1106,108 @@ Tidak semua hal ditest — prioritas berdasarkan risiko dan value.
 - Refresh token yang sudah dipakai (rotated) dipakai lagi → semua sesi user direvoke.
 - User A tidak bisa akses/menghapus dokumen milik User B (403/404).
 
-**Konfigurasi test Celery:** gunakan `task_always_eager=True` di settings test, sehingga task Celery dieksekusi secara synchronous saat testing tanpa perlu broker Redis beneran berjalan.
+**Konfigurasi test Celery:** gunakan `task_always_eager=True` di settings test, sehingga task Celery dieksekusi secara synchronous saat testing tanpa perlu brok## 21. Roadmap Implementasi & GitHub Sync (Sprint by Sprint)
 
-Target minimal sebelum lanjut sprint berikutnya: **`accounts` & `documents` services ter-cover unit test**, dan **minimal 1 E2E happy path** berjalan di CI.
-
----
-
-## 19. CI/CD Pipeline
-
-Setiap `git push`:
-
-```
-GitHub Actions
-   ├── Setup Python (uv) + Node (pnpm)
-   ├── Lint Python (ruff)
-   ├── Type check (mypy, opsional)
-   ├── Lint & typecheck frontend (eslint, tsc)
-   ├── pytest (unit + integration, dengan service container Postgres+Redis)
-   ├── Playwright e2e (opsional di setiap push, wajib sebelum merge ke main)
-   └── Build (Docker image api/worker/web)
-```
-
-Aturan:
-
-```
-❌ Ada yang gagal → STOP, tidak boleh deploy
-✅ Semua lolos    → Deploy ke Staging
-                   → (manual approval) → Deploy ke Production
-```
-
-> **Catatan migration di CI/CD:** setiap deploy wajib menjalankan `python manage.py migrate` sebagai langkah terpisah sebelum service baru menerima traffic (biasanya lewat init container / pre-deploy hook), supaya skema DB selalu sinkron dengan kode yang di-deploy.
+> **Single Source of Truth:** Roadmap ini disinkronkan secara presisi dengan GitHub Milestones, Issues, dan Merged Pull Requests di repository [`yan-ulc/ThinkIT-V2`](https://github.com/yan-ulc/ThinkIT-V2).
 
 ---
 
-## 20. Arsitektur Production & Scaling
+### 🟢 Completed Sprints & Selesai (Sprints 1 – 6)
 
-**Versi awal (cukup untuk MVP & traffic kecil–menengah):**
+#### 📌 Sprint 1 — Database Architecture & Models
+* **Milestone:** [Milestone 1: Project Setup & Database Architecture](https://github.com/yan-ulc/ThinkIT-V2/milestone/1) *(Closed)*
+* **Issue:** [Issue #9 - [Sprint 1] Setup Database Architecture and Initial Migrations](https://github.com/yan-ulc/ThinkIT-V2/issues/9) *(Closed)*
+* **Pull Request:** [PR #1 - feat: complete Sprint 1 - database models and migrations](https://github.com/yan-ulc/ThinkIT-V2/pull/1) *(Merged)*
+- [x] Custom User Model (`apps/accounts/models.py`) dengan `AUTH_USER_MODEL`
+- [x] Extension `pgvector` di PostgreSQL & `VectorField` integration
+- [x] Model `RefreshToken`, `Document`, dan `DocumentChunk`
+- [x] HnswIndex (`vector_cosine_ops`) untuk embedding search cepat
+- [x] Migration awal & database schema setup
 
-```
-Internet → Next.js → Django (Gunicorn) → PostgreSQL
-                          └──→ Redis → Celery Queue → Celery Worker
-```
+#### 📌 Sprint 2 — Custom Authentication System dari Nol
+* **Milestone:** [Milestone 2: Custom Authentication & User Management](https://github.com/yan-ulc/ThinkIT-V2/milestone/2) *(Closed)*
+* **Issue:** [Issue #10 - [Sprint 2] Implement Custom JWT Authentication System](https://github.com/yan-ulc/ThinkIT-V2/issues/10) *(Closed)*
+* **Pull Request:** [PR #2 - feat: complete Sprint 2 - custom authentication system](https://github.com/yan-ulc/ThinkIT-V2/pull/2) *(Merged)*
+- [x] Hashing password Argon2id (`argon2-cffi`)
+- [x] JWT token verification & generation manual (`PyJWT`)
+- [x] Endpoint `POST /auth/register` & `POST /auth/login` (+ Redis rate limiting)
+- [x] Refresh token rotation, revocation, dan reuse detection
+- [x] Custom DRF `JWTAuthentication` class dengan `WWW-Authenticate: Bearer` challenge header
 
-**Versi scaled (kalau traffic naik):**
+#### 📌 Sprint 3 — Document Upload API & Celery Task
+* **Milestone:** [Milestone 3: Document Upload & Asynchronous Processing](https://github.com/yan-ulc/ThinkIT-V2/milestone/3) *(Closed)*
+* **Issue:** [Issue #11 - [Sprint 3] Build PDF Document Upload API and Celery Background Tasks](https://github.com/yan-ulc/ThinkIT-V2/issues/11) *(Closed)*
+* **Pull Request:** [PR #3 - feat: complete Sprint 3 - Document Upload and Celery Task](https://github.com/yan-ulc/ThinkIT-V2/pull/3) *(Merged)*
+- [x] Endpoint upload PDF `POST /api/v1/documents/upload/`
+- [x] MinIO / Object storage integration untuk file PDF
+- [x] Celery background task `process_document_task` untuk PDF parsing & text chunking
+- [x] Document lifecycle tracking (`QUEUED` → `PROCESSING` → `READY` / `FAILED`)
 
-```
-Internet
-   │
-Load Balancer
-  /   |   \
-API1 API2 API3   (Gunicorn, stateless karena JWT)
-  \   |   /
- PostgreSQL (primary + read replica)
-      │
-    Redis (cluster)
-      │
-    Celery Queue
-   /  |  \
- W1  W2  W3   (worker bisa di-scale independen dari API, bahkan bisa dibedakan per-queue: `document-processing` vs `embedding`)
-```
+#### 📌 Sprint 4 — RAG Pipeline & Chat Session API
+* **Milestone:** [Milestone 4: RAG Pipeline & Conversational AI API](https://github.com/yan-ulc/ThinkIT-V2/milestone/4) *(Closed)*
+* **Issues:** [Issue #12](https://github.com/yan-ulc/ThinkIT-V2/issues/12) & [Issue #13](https://github.com/yan-ulc/ThinkIT-V2/issues/13) *(Closed)*
+* **Pull Requests:** [PR #4](https://github.com/yan-ulc/ThinkIT-V2/pull/4) & [PR #5](https://github.com/yan-ulc/ThinkIT-V2/pull/5) *(Merged)*
+- [x] Embeddings AI provider integration (`GoogleGenerativeAIEmbeddings`)
+- [x] LangChain `ChatGroq` (`groq/compound` model) RAG integration
+- [x] Scoped vector similarity search per user (`DocumentChunk.objects.filter(user=user)`)
+- [x] Persistent chat session & message models (`ChatSession`, `ChatMessage`)
+- [x] Citation & page reference tracking per AI answer
 
-Poin penting: **API dan Worker di-scale secara independen** — kalau bottleneck ada di document processing, tambah worker instance (`celery worker --concurrency=N`) tanpa perlu nambah API instance, dan sebaliknya. Karena access token stateless (JWT), API server (Gunicorn) juga bisa di-scale horizontal tanpa sticky session.
+#### 📌 Sprint 5 (Part 1) — User Profile & Midtrans Payment Gateway
+* **Milestone:** [Milestone 5: Frontend Dashboard & Payment Gateway Integration](https://github.com/yan-ulc/ThinkIT-V2/milestone/5)
+* **Issue:** [Issue #15 - [Sprint 5] Integrate User Profile Page and Midtrans Payment Gateway](https://github.com/yan-ulc/ThinkIT-V2/issues/15) *(Closed)*
+- [x] Frontend Next.js User Profile page (`/profile`)
+- [x] Midtrans payment gateway sandbox integration placeholder
+- [x] Real-time Server-Sent Events (SSE) document status streaming
+
+#### 📌 Sprint 6 — CI/CD Pipeline, Dockerization & Test Suite
+* **Milestone:** [Milestone 6: CI/CD Pipeline & Infrastructure Stabilization](https://github.com/yan-ulc/ThinkIT-V2/milestone/6) *(Closed)*
+* **Issues:** [Issue #14](https://github.com/yan-ulc/ThinkIT-V2/issues/14) & [Issue #16](https://github.com/yan-ulc/ThinkIT-V2/issues/16) *(Closed)*
+* **Pull Requests:** [PR #6](https://github.com/yan-ulc/ThinkIT-V2/pull/6) & [PR #8](https://github.com/yan-ulc/ThinkIT-V2/pull/8) *(Merged)*
+- [x] Multi-container Docker Compose setup (Django API, Postgres/pgvector, Redis, MinIO, Celery)
+- [x] GitHub Actions automated workflow (`deploy.yml`) untuk backend & frontend
+- [x] Pytest test suite lengkap (unit & integration tests)
+- [x] Zero TypeScript `any` types & ESLint strict rules verification
 
 ---
 
-## 21. Roadmap Implementasi (Sprint by Sprint)
+### 🚀 Upcoming Sprints & Future Roadmap (Sprints 5 Upgrade – 9)
 
-> Aturan: **satu sprint = satu deliverable yang bisa didemo**. Jangan pindah sprint sebelum checklist selesai.
+#### 🔄 Sprint 5 (Part 2) — Dashboard UI/UX Upgrade & Analytics
+* **Milestone:** [Milestone 5: Frontend Dashboard & Payment Gateway Integration](https://github.com/yan-ulc/ThinkIT-V2/milestone/5)
+* **Issue:** [Issue #17 - [Sprint 5] Upgrade Dashboard UI](https://github.com/yan-ulc/ThinkIT-V2/issues/17) *(Open)*
+- [ ] Upgrade layout struktur utama dashboard
+- [ ] Modernization document list view & quick action popovers
 
-### Sprint 0 — Foundation
-- [ ] Setup monorepo (folder `apps/`, `packages/`, `docker/`)
-- [ ] Setup project Django (`django-admin startproject config`), pindahkan `settings.py` jadi `settings/base|development|staging|production.py`
-- [ ] Setup dependency management Python (`uv init`)
-- [ ] Setup linting Python (`ruff`)
-- [ ] Setup `apps/web` (Next.js) terpisah dengan pnpm
-- [ ] Env validation (`django-environ`/`pydantic-settings`)
-- [ ] Docker Compose: PostgreSQL (pgvector image) + Redis
-- [ ] Endpoint `GET /health` jalan
-- **Deliverable:** `docker compose up` untuk infra, `python manage.py runserver` merespons `/health`.
+* **Issue:** [Issue #25 - [Sprint 5] Implement Document Analytics Feature](https://github.com/yan-ulc/ThinkIT-V2/issues/25) *(Open)*
+- [ ] Build summary cards (Total Docs, Storage Used, Chunks)
+- [ ] Tampilkan usage metrics di bagian atas dashboard
 
-### Sprint 1 — Database
-- [ ] Buat Custom User Model (`apps/accounts/models.py`), set `AUTH_USER_MODEL` di settings **sebelum migration pertama** (krusial di Django — tidak bisa ganti model user dengan mudah setelah migration jalan)
-- [ ] Install & aktifkan extension `pgvector` di PostgreSQL (`CREATE EXTENSION vector;`)
-- [ ] Model `RefreshToken`, `Document`, `DocumentChunk`
-- [ ] Jalankan `makemigrations` & `migrate`
-- [ ] Setup index (`Meta.indexes`, termasuk `HnswIndex` untuk embedding)
-- [ ] Seed data dummy (`management/commands/seed_dummy_data.py` atau `factory_boy` + shell)
-- **Deliverable:** migration bisa dijalankan dari nol (`python manage.py migrate`), tabel muncul di Postgres lokal.
+* **Issue:** [Issue #26 - [Sprint 5] Implement Document Status Filter and Search](https://github.com/yan-ulc/ThinkIT-V2/issues/26) *(Open)*
+- [ ] Pencarian dokumen real-time berdasarkan judul/tags
+- [ ] Filter status dokumen (Ready, Processing, Failed)
 
-### Sprint 2 — Auth System dari Nol 🔥
-- [ ] Install `argon2-cffi`, set `PASSWORD_HASHERS`
-- [ ] Setup JWT sign/verify manual (`core/jwt.py`, pakai `PyJWT`)
-- [ ] Custom DRF `Authentication` class (`core/authentication.py`)
-- [ ] Endpoint `POST /auth/register`
-- [ ] Endpoint `POST /auth/login` (+ rate limiting manual via Redis)
-- [ ] Endpoint `POST /auth/refresh` (dengan token rotation + reuse detection)
-- [ ] Endpoint `POST /auth/logout` & `POST /auth/logout-all`
-- [ ] Endpoint `GET /auth/me`
-- [ ] `IsAuthenticated`/custom permission untuk protect endpoint lain
-- **Deliverable:** bisa register, login, dapat access token, akses endpoint protected, refresh token jalan, logout beneran revoke sesi. Test manual: coba pakai refresh token yang sudah dipakai → semua sesi ke-revoke.
+#### 🎯 Sprint 7 — In-App PDF Document Viewer & Interactive Preview
+* **Milestone:** [Milestone 7: In-App PDF Document Viewer & Interactive Preview](https://github.com/yan-ulc/ThinkIT-V2/milestone/7)
+* **Issue:** [Issue #18 - [Sprint 7] Implement In-App PDF Document Viewer and Interactive Preview](https://github.com/yan-ulc/ThinkIT-V2/issues/18) *(Open)*
+- [ ] Embed interactive PDF renderer (`react-pdf` / PDF.js) di frontend Next.js
+- [ ] Layout side-by-side antara preview PDF dan chat room AI (`/chat/[id]`)
+- [ ] Highlighting halaman & kutipan chunk dokumen secara langsung di preview PDF
 
-### Sprint 3 — API Foundation untuk Documents
-- [ ] Struktur modular (`serializers.py`/`views.py`/`services.py`/`permissions.py`) untuk `apps/documents`
-- [ ] Custom exception handler untuk format response konsisten
-- [ ] Endpoint: `GET /documents`, `GET /documents/:id`, `DELETE /documents/:id` (dengan `IsOwner` permission + queryset filter)
-- **Deliverable:** user login bisa lihat daftar dokumennya sendiri, tidak bisa akses dokumen user lain (dicoba manual dengan 2 akun berbeda).
+#### 🎯 Sprint 8 — AI Question & Quiz Generator
+* **Milestone:** [Milestone 8: AI Question & Quiz Generator](https://github.com/yan-ulc/ThinkIT-V2/milestone/8)
+* **Issue:** [Issue #19 - [Sprint 8] Implement AI Question and Quiz Generator Feature](https://github.com/yan-ulc/ThinkIT-V2/issues/19) *(Open)*
+- [ ] Endpoint API backend untuk automatic quiz & question generation dari isi dokumen
+- [ ] Komponen UI interaktif untuk latihan soal & flashcard belajar
+- [ ] Fitur simpan & ekspor bank soal hasil buatan AI
 
-### Sprint 4 — Document Upload
-- [ ] Generate presigned URL untuk upload langsung ke R2 (`boto3`)
-- [ ] Endpoint `POST /documents` (dengan `Idempotency-Key`)
-- [ ] Simpan metadata dokumen (status = `UPLOADING` → `QUEUED`), terikat ke `request.user`
-- **Deliverable:** upload PDF dari frontend langsung ke R2 tanpa lewat server Django, metadata tersimpan di DB dengan `user` yang benar.
-
-### Sprint 5 — Celery Queue + Worker 🔥
-- [ ] Setup Celery app (`config/celery.py`), konfigurasi broker Redis
-- [ ] `apps/documents/tasks.py`: `process_document_task`
-- [ ] Worker: download file → extract text → clean → chunk
-- [ ] Update status dokumen di setiap tahap (`PROCESSING` → `READY`/`FAILED`)
-- [ ] Retry + exponential backoff (`autoretry_for`, `retry_backoff`)
-- [ ] Custom exception classes (`TransientProcessingError` vs `PermanentProcessingError`)
-- [ ] (Opsional) Flower dashboard untuk monitoring queue
-- **Deliverable:** upload dokumen → status berubah otomatis dari `QUEUED` → `PROCESSING` → `READY`, error ditangani dengan retry.
-
-### Sprint 6 — AI + RAG
-- [ ] Integrasi embedding generation (batch per chunk, via Anthropic/embedding provider Python SDK)
-- [ ] Simpan embedding ke `DocumentChunk` (pgvector `VectorField`), sertakan `user`
-- [ ] Endpoint `POST /chat`: embed query → vector search **terfilter `user=request.user`** → ambil top-K chunk
-- [ ] Kirim context + pertanyaan ke LLM, kembalikan jawaban
-- [ ] Frontend chat UI sederhana
-- **Deliverable:** user bisa upload dokumen dan bertanya ke AI, jawaban berdasarkan isi dokumen miliknya sendiri saja (dites: user lain tidak pernah dapat jawaban dari dokumen orang lain).
-
-### Sprint 7 — Redis + Performance
-- [ ] Setup `django-redis` sebagai `CACHES` backend
-- [ ] Cache untuk endpoint read-heavy (`GET /documents`, `GET /documents/:id`)
-- [ ] Cache invalidation saat data terkait berubah (di `services.py`, bukan di view)
-- [ ] Rate limiting per user/IP untuk endpoint umum (bukan cuma auth)
-- **Deliverable:** endpoint yang di-cache terbukti lebih cepat pada request berulang (bisa ditunjukkan lewat logging cache HIT/MISS), rate limit aktif.
-
-### Sprint 8 — Testing
-- [ ] Setup `pytest-django` + `factory_boy`
-- [ ] Unit test untuk `accounts/services.py` dan `documents/services.py`
-- [ ] Integration test untuk endpoint auth & documents (`APIClient`)
-- [ ] Setup `task_always_eager=True` untuk test settings
-- [ ] E2E test Playwright: register → login → upload → chat → logout
-- **Deliverable:** `pytest` hijau semua, minimal 1 E2E flow lengkap otomatis, termasuk skenario auth negatif (login gagal, akses dokumen orang lain ditolak).
-
-### Sprint 9 — Docker (full containerization)
-- [ ] `docker/api.Dockerfile` (dipakai bersama untuk service `api` dan `worker`, beda `command`)
-- [ ] `docker/web.Dockerfile`
-- [ ] `docker-compose.yml` final: `web`, `api`, `worker`, `flower`, `postgres`, `redis`
-- [ ] Health check container (`HEALTHCHECK` di Dockerfile / `depends_on.condition: service_healthy`)
-- **Deliverable:** `docker compose up` dari clone repo baru langsung jalan penuh (web, api, worker, db, redis).
-
-### Sprint 10 — Production Readiness
-- [ ] CI/CD pipeline lengkap (lint, typecheck, pytest, build, migrate, deploy)
-- [ ] Setup staging & production environment terpisah (secret JWT & `DJANGO_SECRET_KEY` berbeda per environment!)
-- [ ] Sentry error tracking terpasang di Django & Celery (dengan scrubbing data sensitif)
-- [ ] Health check & readiness probe (`/health` cek koneksi DB & Redis)
-- [ ] Backup strategy untuk PostgreSQL
-- [ ] Basic monitoring (uptime, queue length via Flower/metrics, failed task count, failed login rate)
-- [ ] `python manage.py check --deploy` untuk audit setting keamanan Django sebelum go-live
-- **Deliverable:** deploy otomatis dari `main` branch ke staging, manual promote ke production, error ter-track di Sentry.
+#### 🎯 Sprint 9 — Full UI Polish, Design System Consistency & Theme System
+* **Milestone:** [Milestone 9: UI Polish & Design System Consistency](https://github.com/yan-ulc/ThinkIT-V2/milestone/9)
+* **Issue:** [Issue #20 - [Sprint 9] Full UI Polish, Design System Consistency, and Theme System](https://github.com/yan-ulc/ThinkIT-V2/issues/20) *(Open)*
+- [ ] Terapkan konsistensi theme system (vibrant glassmorphic dark mode + custom palette)
+- [ ] Framer Motion micro-animations untuk seluruh interaksi & transisi halaman
+- [ ] Responsiveness audit 100% di perangkat Mobile, Tablet, dan Desktop
+- [ ] Final production readiness checklist & release audit
 
 ---
 
