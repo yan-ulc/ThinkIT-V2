@@ -1180,8 +1180,8 @@ Tidak semua hal ditest — prioritas berdasarkan risiko dan value.
 - [ ] Modernization document list view & quick action popovers
 
 * **Issue:** [Issue #25 - [Sprint 5] Implement Document Analytics Feature](https://github.com/yan-ulc/ThinkIT-V2/issues/25) *(Open)*
-- [ ] Build summary cards (Total Docs, Storage Used, Chunks)
-- [ ] Tampilkan usage metrics di bagian atas dashboard
+- [x] Build summary cards (Total Docs, Storage Used, Chunks)
+- [x] Tampilkan usage metrics di bagian atas dashboard
 
 * **Issue:** [Issue #26 - [Sprint 5] Implement Document Status Filter and Search](https://github.com/yan-ulc/ThinkIT-V2/issues/26) *(Open)*
 - [ ] Pencarian dokumen real-time berdasarkan judul/tags

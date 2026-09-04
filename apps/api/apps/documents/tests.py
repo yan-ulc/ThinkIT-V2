@@ -2,6 +2,7 @@ import pytest
 from rest_framework.test import APIClient
 from django.contrib.auth import get_user_model
 from rest_framework import status
+from apps.documents.models import Document, DocumentChunk
 
 User = get_user_model()
 
@@ -69,4 +70,111 @@ class TestDocuments:
         assert response.status_code == status.HTTP_201_CREATED
         assert response.data['error'] is False
         assert mock_task.called
+
+    def test_analytics_empty(self, authenticated_client):
+        response = authenticated_client.get('/api/v1/documents/analytics/')
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data['error'] is False
+        data = response.data['data']
+        assert data['total_documents'] == 0
+        assert data['total_storage_bytes'] == 0
+        assert data['storage_used_mb'] == 0.0
+        assert data['total_chunks'] == 0
+        assert data['status_counts'] == {
+            'ready': 0,
+            'processing': 0,
+            'queued': 0,
+            'failed': 0,
+            'uploading': 0,
+        }
+
+    def test_analytics_with_data(self, authenticated_client):
+        user = authenticated_client.user
+        doc1 = Document.objects.create(
+            user=user,
+            name='doc1.pdf',
+            storage_key='k1',
+            mime_type='application/pdf',
+            size=1048576,
+            status=Document.StatusChoices.READY
+        )
+        doc2 = Document.objects.create(
+            user=user,
+            name='doc2.pdf',
+            storage_key='k2',
+            mime_type='application/pdf',
+            size=2097152,
+            status=Document.StatusChoices.PROCESSING
+        )
+        doc3 = Document.objects.create(
+            user=user,
+            name='doc3.pdf',
+            storage_key='k3',
+            mime_type='application/pdf',
+            size=524288,
+            status=Document.StatusChoices.FAILED
+        )
+        DocumentChunk.objects.create(
+            document=doc1,
+            user=user,
+            chunk_index=0,
+            content='Test chunk 1',
+            embedding=[0.0] * 1536,
+            token_count=100
+        )
+        DocumentChunk.objects.create(
+            document=doc1,
+            user=user,
+            chunk_index=1,
+            content='Test chunk 2',
+            embedding=[0.0] * 1536,
+            token_count=150
+        )
+
+        response = authenticated_client.get('/api/v1/documents/analytics/')
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data['error'] is False
+        data = response.data['data']
+        assert data['total_documents'] == 3
+        assert data['total_storage_bytes'] == 1048576 + 2097152 + 524288
+        assert data['storage_used_mb'] == 3.5
+        assert data['total_chunks'] == 2
+        assert data['status_counts']['ready'] == 1
+        assert data['status_counts']['processing'] == 1
+        assert data['status_counts']['failed'] == 1
+        assert data['status_counts']['queued'] == 0
+        assert data['status_counts']['uploading'] == 0
+
+    def test_analytics_user_isolation(self, authenticated_client):
+        other_user = User.objects.create_user(
+            email='otherdoc@example.com',
+            password='password123'
+        )
+        other_doc = Document.objects.create(
+            user=other_user,
+            name='other.pdf',
+            storage_key='k_other',
+            mime_type='application/pdf',
+            size=5000000,
+            status=Document.StatusChoices.READY
+        )
+        DocumentChunk.objects.create(
+            document=other_doc,
+            user=other_user,
+            chunk_index=0,
+            content='Other user chunk',
+            embedding=[0.0] * 1536,
+            token_count=80
+        )
+
+        response = authenticated_client.get('/api/v1/documents/analytics/')
+        assert response.status_code == status.HTTP_200_OK
+        data = response.data['data']
+        assert data['total_documents'] == 0
+        assert data['total_storage_bytes'] == 0
+        assert data['total_chunks'] == 0
+
+    def test_analytics_unauthenticated(self, api_client):
+        response = api_client.get('/api/v1/documents/analytics/')
+        assert response.status_code == status.HTTP_401_UNAUTHORIZED
 

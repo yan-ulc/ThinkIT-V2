@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Brain, FileText, LogOut, MessageSquare, Plus, UploadCloud, Loader2 } from "lucide-react";
+import { Brain, FileText, LogOut, MessageSquare, Plus, UploadCloud, Loader2, HardDrive, Layers, BarChart3 } from "lucide-react";
 import { motion } from "framer-motion";
 import { fetchApi, API_URL } from "@/lib/api";
 
@@ -15,15 +15,46 @@ interface Document {
   created_at: string;
 }
 
+interface DocumentAnalytics {
+  total_documents: number;
+  total_storage_bytes: number;
+  storage_used_mb: number;
+  total_chunks: number;
+  status_counts: {
+    ready: number;
+    processing: number;
+    queued: number;
+    failed: number;
+    uploading: number;
+  };
+}
+
 export default function DashboardPage() {
   const router = useRouter();
   const [documents, setDocuments] = useState<Document[]>([]);
+  const [analytics, setAnalytics] = useState<DocumentAnalytics | null>(null);
+  const [isLoadingAnalytics, setIsLoadingAnalytics] = useState(true);
   const [isUploading, setIsUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const fetchAnalytics = async () => {
+    try {
+      const res = await fetchApi("/documents/analytics/");
+      if (res && res.data) {
+        setAnalytics(res.data);
+      }
+    } catch (err) {
+      console.error("Failed to fetch analytics", err);
+    } finally {
+      setIsLoadingAnalytics(false);
+    }
+  };
 
   useEffect(() => {
     const abortController = new AbortController();
     
+    fetchAnalytics();
+
     const streamDocuments = async () => {
       const token = localStorage.getItem("access_token");
       if (!token) return router.push("/login");
@@ -60,6 +91,7 @@ export default function DashboardPage() {
               try {
                 const data = JSON.parse(line.slice(6));
                 setDocuments(data);
+                fetchAnalytics();
               } catch {}
             }
           }
@@ -97,6 +129,7 @@ export default function DashboardPage() {
         method: "POST",
         body: formData,
       });
+      fetchAnalytics();
       // SSE will auto-update the list!
     } catch (err) {
       console.error("Upload failed", err);
@@ -145,6 +178,96 @@ export default function DashboardPage() {
         </header>
 
         <div className="p-8 max-w-5xl mx-auto w-full flex-1">
+          {/* Document Analytics Summary Cards */}
+          <motion.div
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.3 }}
+            className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8"
+          >
+            {/* Total Documents Card */}
+            <div className="glass p-5 rounded-2xl border border-white/10 flex flex-col justify-between hover:border-brand-500/30 transition-all">
+              <div className="flex items-center justify-between mb-3">
+                <span className="text-sm font-medium text-gray-400">Total Documents</span>
+                <div className="p-2.5 bg-brand-500/10 text-brand-400 rounded-xl">
+                  <FileText className="w-5 h-5" />
+                </div>
+              </div>
+              <div>
+                <h3 className="text-2xl font-bold tracking-tight">
+                  {isLoadingAnalytics ? "..." : (analytics?.total_documents ?? documents.length)}
+                </h3>
+                <p className="text-xs text-gray-500 mt-1">
+                  {analytics?.status_counts?.ready ?? 0} ready for AI chat
+                </p>
+              </div>
+            </div>
+
+            {/* Storage Used Card */}
+            <div className="glass p-5 rounded-2xl border border-white/10 flex flex-col justify-between hover:border-blue-500/30 transition-all">
+              <div className="flex items-center justify-between mb-3">
+                <span className="text-sm font-medium text-gray-400">Storage Used</span>
+                <div className="p-2.5 bg-blue-500/10 text-blue-400 rounded-xl">
+                  <HardDrive className="w-5 h-5" />
+                </div>
+              </div>
+              <div>
+                <h3 className="text-2xl font-bold tracking-tight">
+                  {isLoadingAnalytics
+                    ? "..."
+                    : analytics
+                    ? analytics.storage_used_mb >= 1
+                      ? `${analytics.storage_used_mb} MB`
+                      : `${Math.round(analytics.total_storage_bytes / 1024)} KB`
+                    : "0 KB"}
+                </h3>
+                <p className="text-xs text-gray-500 mt-1">Total uploaded file size</p>
+              </div>
+            </div>
+
+            {/* Chunks Indexed Card */}
+            <div className="glass p-5 rounded-2xl border border-white/10 flex flex-col justify-between hover:border-purple-500/30 transition-all">
+              <div className="flex items-center justify-between mb-3">
+                <span className="text-sm font-medium text-gray-400">Chunks Indexed</span>
+                <div className="p-2.5 bg-purple-500/10 text-purple-400 rounded-xl">
+                  <Layers className="w-5 h-5" />
+                </div>
+              </div>
+              <div>
+                <h3 className="text-2xl font-bold tracking-tight">
+                  {isLoadingAnalytics ? "..." : (analytics?.total_chunks ?? 0)}
+                </h3>
+                <p className="text-xs text-gray-500 mt-1">Vector embeddings ready</p>
+              </div>
+            </div>
+
+            {/* Document Status Breakdown Card */}
+            <div className="glass p-5 rounded-2xl border border-white/10 flex flex-col justify-between hover:border-emerald-500/30 transition-all">
+              <div className="flex items-center justify-between mb-3">
+                <span className="text-sm font-medium text-gray-400">Status Overview</span>
+                <div className="p-2.5 bg-emerald-500/10 text-emerald-400 rounded-xl">
+                  <BarChart3 className="w-5 h-5" />
+                </div>
+              </div>
+              <div>
+                <div className="flex flex-wrap items-center gap-1.5 text-xs font-semibold">
+                  <span className="px-2 py-0.5 rounded-full bg-green-500/10 text-green-400 border border-green-500/20">
+                    {analytics?.status_counts?.ready ?? 0} Ready
+                  </span>
+                  <span className="px-2 py-0.5 rounded-full bg-yellow-500/10 text-yellow-400 border border-yellow-500/20">
+                    {(analytics?.status_counts?.processing ?? 0) + (analytics?.status_counts?.queued ?? 0)} Active
+                  </span>
+                  {(analytics?.status_counts?.failed ?? 0) > 0 && (
+                    <span className="px-2 py-0.5 rounded-full bg-red-500/10 text-red-400 border border-red-500/20">
+                      {analytics?.status_counts?.failed} Failed
+                    </span>
+                  )}
+                </div>
+                <p className="text-xs text-gray-500 mt-1.5">Processing breakdown</p>
+              </div>
+            </div>
+          </motion.div>
+
           {/* Upload Area */}
           <motion.div 
             initial={{ opacity: 0, y: 20 }}

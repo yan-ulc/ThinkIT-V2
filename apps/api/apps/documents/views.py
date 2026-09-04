@@ -3,7 +3,8 @@ from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.parsers import MultiPartParser, FormParser
-from .models import Document
+from django.db.models import Sum
+from .models import Document, DocumentChunk
 from .serializers import DocumentSerializer, DocumentUploadSerializer
 from .tasks import process_document_task
 from core.storage import StorageClient
@@ -98,3 +99,35 @@ class DocumentViewSet(viewsets.ModelViewSet):
                 pubsub.close()
 
         return StreamingHttpResponse(event_stream(), content_type='text/event-stream')
+
+    @action(detail=False, methods=['get'])
+    def analytics(self, request):
+        user = request.user
+        user_docs = Document.objects.filter(user=user)
+
+        total_documents = user_docs.count()
+        storage_agg = user_docs.aggregate(total_bytes=Sum('size'))
+        total_storage_bytes = storage_agg['total_bytes'] or 0
+        storage_used_mb = round(total_storage_bytes / (1024 * 1024), 2)
+
+        total_chunks = DocumentChunk.objects.filter(user=user).count()
+
+        status_counts = {
+            'ready': user_docs.filter(status=Document.StatusChoices.READY).count(),
+            'processing': user_docs.filter(status=Document.StatusChoices.PROCESSING).count(),
+            'queued': user_docs.filter(status=Document.StatusChoices.QUEUED).count(),
+            'failed': user_docs.filter(status=Document.StatusChoices.FAILED).count(),
+            'uploading': user_docs.filter(status=Document.StatusChoices.UPLOADING).count(),
+        }
+
+        return Response({
+            'error': False,
+            'message': 'Document analytics retrieved successfully',
+            'data': {
+                'total_documents': total_documents,
+                'total_storage_bytes': total_storage_bytes,
+                'storage_used_mb': storage_used_mb,
+                'total_chunks': total_chunks,
+                'status_counts': status_counts,
+            }
+        }, status=status.HTTP_200_OK)
