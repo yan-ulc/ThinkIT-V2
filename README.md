@@ -1183,9 +1183,13 @@ Tidak semua hal ditest — prioritas berdasarkan risiko dan value.
 - [x] Build summary cards (Total Docs, Storage Used, Chunks)
 - [x] Tampilkan usage metrics di bagian atas dashboard
 
-* **Issue:** [Issue #26 - [Sprint 5] Implement Document Status Filter and Search](https://github.com/yan-ulc/ThinkIT-V2/issues/26) *(Open)*
-- [ ] Pencarian dokumen real-time berdasarkan judul/tags
-- [ ] Filter status dokumen (Ready, Processing, Failed)
+* **Issue:** [Issue #26 - [Sprint 5] Implement Document Status Filter Feature](https://github.com/yan-ulc/ThinkIT-V2/issues/26) *(Open)*
+- [ ] Filter status dokumen interaktif (All, Ready, Processing, Failed)
+- [ ] Dynamic empty states per status filter
+
+* **Issue:** [Issue #28 - [Sprint 5] Implement Real-Time Document Search Feature](https://github.com/yan-ulc/ThinkIT-V2/issues/28) *(Open)*
+- [ ] Pencarian dokumen real-time berdasarkan judul berkas
+- [ ] Input pencarian debounced dan feedback hasil pencarian
 
 #### 🎯 Sprint 7 — In-App PDF Document Viewer & Interactive Preview
 * **Milestone:** [Milestone 7: In-App PDF Document Viewer & Interactive Preview](https://github.com/yan-ulc/ThinkIT-V2/milestone/7)
