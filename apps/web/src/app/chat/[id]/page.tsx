@@ -2,13 +2,14 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import { ArrowLeft, Bot, FileText, Send, User } from "lucide-react";
+import { ArrowLeft, Bot, FileText, Send, User, PanelLeftClose, PanelLeftOpen, MessageSquare } from "lucide-react";
 import { motion } from "framer-motion";
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 
 import { useParams } from "next/navigation";
 import { fetchApi } from "@/lib/api";
+import PdfViewer from "@/components/pdf-viewer/PdfViewer";
 
 interface Message {
   role: "user" | "assistant";
@@ -23,15 +24,41 @@ interface ChatMessageRaw {
   created_at: string;
 }
 
+interface DocumentInfo {
+  id: string;
+  name: string;
+  size: number;
+  status: string;
+}
+
 export default function ChatPage() {
   const params = useParams();
   const documentId = params.id as string;
+  const [document, setDocument] = useState<DocumentInfo | null>(null);
+  const [showViewer, setShowViewer] = useState(true);
+  const [mobileTab, setMobileTab] = useState<"viewer" | "chat">("chat");
   const [input, setInput] = useState("");
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [messages, setMessages] = useState<Message[]>([
     { role: "assistant", content: "Hi there! I have read your document. What would you like to know about it?" }
   ]);
   const [isTyping, setIsTyping] = useState(false);
+
+  useEffect(() => {
+    const fetchDoc = async () => {
+      try {
+        const res = await fetchApi(`/documents/${documentId}/`);
+        if (res && res.data) {
+          setDocument(res.data);
+        } else if (res && res.id) {
+          setDocument(res as DocumentInfo);
+        }
+      } catch (err) {
+        console.error("Failed to fetch document info", err);
+      }
+    };
+    fetchDoc();
+  }, [documentId]);
 
   useEffect(() => {
     const fetchHistory = async () => {
@@ -101,52 +128,113 @@ export default function ChatPage() {
     }
   };
 
+  const formatSize = (bytes?: number) => {
+    if (!bytes) return "0 KB";
+    if (bytes >= 1048576) return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+    return `${Math.round(bytes / 1024)} KB`;
+  };
+
   return (
-    <div className="flex h-screen overflow-hidden">
-      {/* Sidebar - Document Info */}
-      <aside className="w-80 glass-dark border-r border-white/5 flex flex-col hidden lg:flex relative z-20">
-        <div className="p-6 border-b border-white/10 flex items-center gap-4">
-          <Link href="/dashboard" className="p-2 hover:bg-white/10 rounded-lg transition-colors">
+    <div className="flex flex-col h-screen overflow-hidden bg-[#0a0a0c]">
+      {/* Global Header */}
+      <header className="px-4 py-2.5 glass border-b border-white/10 flex items-center justify-between gap-3 z-30 shrink-0">
+        <div className="flex items-center gap-3 min-w-0">
+          <Link 
+            href="/dashboard" 
+            className="p-1.5 hover:bg-white/10 rounded-xl text-gray-400 hover:text-white transition-colors shrink-0"
+            title="Back to Dashboard"
+          >
             <ArrowLeft className="w-5 h-5" />
           </Link>
-          <h2 className="font-semibold truncate">Project_Blueprint.pdf</h2>
-        </div>
-        
-        <div className="p-6">
-          <div className="w-full aspect-[3/4] bg-white/5 rounded-2xl border border-white/10 flex flex-col items-center justify-center text-gray-500 mb-6 relative overflow-hidden">
-             <FileText className="w-16 h-16 opacity-50 mb-4" />
-             <span className="text-sm">PDF Preview Unavailable</span>
-             <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent"></div>
-          </div>
-          
-          <div className="space-y-4 text-sm text-gray-400">
-            <div className="flex justify-between">
-              <span>Status</span>
-              <span className="text-green-400 font-medium">READY</span>
+          <div className="flex items-center gap-2 min-w-0">
+            <div className="p-1.5 bg-brand-500/10 text-brand-400 rounded-lg shrink-0">
+              <FileText className="w-4 h-4" />
             </div>
-            <div className="flex justify-between">
-              <span>Size</span>
-              <span className="text-white">2.4 MB</span>
-            </div>
-            <div className="flex justify-between">
-              <span>Chunks</span>
-              <span className="text-white">124</span>
+            <div className="min-w-0">
+              <h1 className="font-semibold text-sm truncate text-white max-w-[200px] sm:max-w-xs md:max-w-md" title={document?.name}>
+                {document?.name || "Document"}
+              </h1>
+              {document && (
+                <div className="flex items-center gap-2 text-[11px] text-gray-400">
+                  <span>{formatSize(document.size)}</span>
+                  <span>•</span>
+                  <span className={document.status === "READY" ? "text-green-400 font-medium" : "text-yellow-400 font-medium"}>
+                    {document.status}
+                  </span>
+                </div>
+              )}
             </div>
           </div>
         </div>
-      </aside>
 
-      {/* Main Chat Area */}
-      <main className="flex-1 flex flex-col relative z-10 bg-black/20">
-        <header className="lg:hidden p-4 border-b border-white/5 glass flex items-center gap-4 sticky top-0 z-20">
-          <Link href="/dashboard" className="p-2 hover:bg-white/10 rounded-lg transition-colors">
-            <ArrowLeft className="w-5 h-5" />
-          </Link>
-          <h2 className="font-semibold truncate text-sm">Project_Blueprint.pdf</h2>
-        </header>
+        {/* View Controls */}
+        <div className="flex items-center gap-2 shrink-0">
+          {/* Mobile Tab Switcher */}
+          <div className="flex md:hidden bg-white/5 border border-white/10 rounded-xl p-0.5">
+            <button
+              type="button"
+              onClick={() => setMobileTab("viewer")}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
+                mobileTab === "viewer"
+                  ? "bg-brand-600 text-white shadow"
+                  : "text-gray-400 hover:text-white"
+              }`}
+            >
+              <FileText className="w-3.5 h-3.5" />
+              PDF
+            </button>
+            <button
+              type="button"
+              onClick={() => setMobileTab("chat")}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
+                mobileTab === "chat"
+                  ? "bg-brand-600 text-white shadow"
+                  : "text-gray-400 hover:text-white"
+              }`}
+            >
+              <MessageSquare className="w-3.5 h-3.5" />
+              Chat
+            </button>
+          </div>
 
-        {/* Chat Messages */}
-        <div className="flex-1 overflow-y-auto p-4 md:p-8 space-y-6 scroll-smooth">
+          {/* Desktop PDF Toggle */}
+          <button
+            type="button"
+            onClick={() => setShowViewer(!showViewer)}
+            className="hidden md:flex items-center gap-2 px-3 py-1.5 rounded-xl border border-white/10 bg-white/5 hover:bg-white/10 text-xs font-medium text-gray-300 hover:text-white transition-all"
+            title={showViewer ? "Hide PDF Viewer" : "Show PDF Viewer"}
+          >
+            {showViewer ? <PanelLeftClose className="w-4 h-4 text-brand-400" /> : <PanelLeftOpen className="w-4 h-4 text-brand-400" />}
+            <span>{showViewer ? "Hide PDF" : "Show PDF"}</span>
+          </button>
+        </div>
+      </header>
+
+      {/* Main Split Container */}
+      <div className="flex-1 flex overflow-hidden relative">
+        {/* Desktop Split View: PDF Viewer */}
+        {showViewer && (
+          <div className="hidden md:flex w-1/2 p-3 pr-1.5 border-r border-white/5 flex-col shrink-0">
+            <PdfViewer 
+              documentId={documentId} 
+              documentName={document?.name} 
+              onClose={() => setShowViewer(false)}
+            />
+          </div>
+        )}
+
+        {/* Mobile View: PDF Viewer */}
+        <div className={`md:hidden flex-1 p-2 flex-col ${mobileTab === "viewer" ? "flex" : "hidden"}`}>
+          <PdfViewer 
+            documentId={documentId} 
+            documentName={document?.name}
+          />
+        </div>
+
+        {/* AI Chat Room */}
+        <main className={`flex-1 flex flex-col relative z-10 bg-black/20 overflow-hidden ${mobileTab === "chat" ? "flex" : "hidden md:flex"}`}>
+          {/* Chat Messages */}
+          <div className="flex-1 overflow-y-auto p-4 md:p-6 space-y-6 scroll-smooth">
           {messages.map((msg, idx) => (
             <motion.div 
               key={idx}
@@ -246,6 +334,7 @@ export default function ChatPage() {
           </div>
         </div>
       </main>
+      </div>
     </div>
   );
 }
