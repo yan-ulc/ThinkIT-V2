@@ -1179,7 +1179,7 @@ Tidak semua hal ditest — prioritas berdasarkan risiko dan value.
 - [ ] Upgrade layout struktur utama dashboard
 - [ ] Modernization document list view & quick action popovers
 
-* **Issue:** [Issue #25 - [Sprint 5] Implement Document Analytics Feature](https://github.com/yan-ulc/ThinkIT-V2/issues/25) *(Open)*
+* **Issue:** [Issue #25 - [Sprint 5] Implement Document Analytics Feature](https://github.com/yan-ulc/ThinkIT-V2/issues/25) *(Closed)*
 - [x] Build summary cards (Total Docs, Storage Used, AI Usage)
 - [x] Tampilkan usage metrics di bagian atas dashboard
 
@@ -1187,16 +1187,22 @@ Tidak semua hal ditest — prioritas berdasarkan risiko dan value.
 - [ ] Filter status dokumen interaktif (All, Ready, Processing, Failed)
 - [ ] Dynamic empty states per status filter
 
-* **Issue:** [Issue #28 - [Sprint 5] Implement Real-Time Document Search Feature](https://github.com/yan-ulc/ThinkIT-V2/issues/28) *(Open)*
-- [ ] Pencarian dokumen real-time berdasarkan judul berkas
-- [ ] Input pencarian debounced dan feedback hasil pencarian
+* **Issue:** [Issue #28 - [Sprint 5] Implement Real-Time Document Search Feature](https://github.com/yan-ulc/ThinkIT-V2/issues/28) *(Closed)*
+- [x] Pencarian dokumen real-time berdasarkan judul berkas
+- [x] Input pencarian debounced dan feedback hasil pencarian
 
 #### 🎯 Sprint 7 — In-App PDF Document Viewer & Interactive Preview
 * **Milestone:** [Milestone 7: In-App PDF Document Viewer & Interactive Preview](https://github.com/yan-ulc/ThinkIT-V2/milestone/7)
-* **Issue:** [Issue #18 - [Sprint 7] Implement In-App PDF Document Viewer and Interactive Preview](https://github.com/yan-ulc/ThinkIT-V2/issues/18) *(Open)*
+* **Issue:** [Issue #18 - [Sprint 7] Implement In-App PDF Document Viewer](https://github.com/yan-ulc/ThinkIT-V2/issues/18) *(Open)*
 - [ ] Embed interactive PDF renderer (`react-pdf` / PDF.js) di frontend Next.js
-- [ ] Layout side-by-side antara preview PDF dan chat room AI (`/chat/[id]`)
-- [ ] Highlighting halaman & kutipan chunk dokumen secara langsung di preview PDF
+- [ ] Layout side-by-side antara viewer PDF dan chat room AI (`/chat/[id]`) dengan resizable splitter
+- [ ] Kontrol navigasi halaman (next/prev, jump to page) dan zoom (in/out/fit width)
+- [ ] Endpoint secure presigned URL / file download untuk dokumen PDF
+
+* **Issue:** [Issue #31 - [Sprint 7] Implement Interactive PDF Preview and Citation Highlighting](https://github.com/yan-ulc/ThinkIT-V2/issues/31) *(Open)*
+- [ ] Navigasi interaktif langsung ke halaman terkait saat user mengklik citation badge di chat AI
+- [ ] Highlighting halaman & kutipan chunk teks dokumen secara visual pada canvas PDF
+- [ ] Interactive preview tooltip / drawer untuk melihat ringkasan chunk dan skor relevansi
 
 #### 🎯 Sprint 8 — AI Question & Quiz Generator
 * **Milestone:** [Milestone 8: AI Question & Quiz Generator](https://github.com/yan-ulc/ThinkIT-V2/milestone/8)
