@@ -4,6 +4,7 @@ from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.parsers import MultiPartParser, FormParser
 from django.db.models import Sum
+from django.http import FileResponse
 from .models import Document
 from .serializers import DocumentSerializer, DocumentUploadSerializer
 from .tasks import process_document_task
@@ -71,6 +72,21 @@ class DocumentViewSet(viewsets.ModelViewSet):
             })
         except Exception as e:
             return Response({'error': True, 'message': f'Failed to generate URL: {str(e)}'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+    @action(detail=True, methods=['get'])
+    def file(self, request, pk=None):
+        doc = self.get_object()
+        storage_client = StorageClient()
+        try:
+            s3_response = storage_client.s3_client.get_object(
+                Bucket=storage_client.bucket,
+                Key=doc.storage_key
+            )
+            response = FileResponse(s3_response['Body'], content_type='application/pdf')
+            response['Content-Disposition'] = f'inline; filename="{doc.name}"'
+            return response
+        except Exception as e:
+            return Response({'error': True, 'message': f'Failed to retrieve document file: {str(e)}'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     @action(detail=False, methods=['get'])
     def stream(self, request):

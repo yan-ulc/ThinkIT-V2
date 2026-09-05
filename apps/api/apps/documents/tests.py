@@ -221,3 +221,71 @@ class TestDocuments:
         response = api_client.get('/api/v1/documents/analytics/')
         assert response.status_code == status.HTTP_401_UNAUTHORIZED
 
+    def test_get_document_file_stream_success(self, authenticated_client, mocker):
+        from io import BytesIO
+        user = authenticated_client.user
+        doc = Document.objects.create(
+            user=user,
+            name='sample_doc.pdf',
+            storage_key='documents/sample_doc.pdf',
+            mime_type='application/pdf',
+            size=1024,
+            status=Document.StatusChoices.READY
+        )
+        dummy_body = BytesIO(b"%PDF-1.4 dummy pdf content")
+        mock_storage = mocker.MagicMock()
+        mock_storage.bucket = 'thinkit'
+        mock_storage.s3_client.get_object.return_value = {'Body': dummy_body}
+        mocker.patch('apps.documents.views.StorageClient', return_value=mock_storage)
+
+        response = authenticated_client.get(f'/api/v1/documents/{doc.id}/file/')
+        assert response.status_code == status.HTTP_200_OK
+        assert response['Content-Type'] == 'application/pdf'
+        assert 'inline' in response['Content-Disposition']
+
+    def test_get_document_file_unauthenticated(self, api_client, db):
+        user = User.objects.create_user(email='owner@example.com', password='password123')
+        doc = Document.objects.create(
+            user=user,
+            name='private.pdf',
+            storage_key='k_priv',
+            mime_type='application/pdf',
+            size=1024,
+            status=Document.StatusChoices.READY
+        )
+        response = api_client.get(f'/api/v1/documents/{doc.id}/file/')
+        assert response.status_code == status.HTTP_401_UNAUTHORIZED
+
+    def test_get_document_file_user_isolation(self, authenticated_client):
+        other_user = User.objects.create_user(email='other2@example.com', password='password123')
+        doc = Document.objects.create(
+            user=other_user,
+            name='other_private.pdf',
+            storage_key='k_other2',
+            mime_type='application/pdf',
+            size=1024,
+            status=Document.StatusChoices.READY
+        )
+        response = authenticated_client.get(f'/api/v1/documents/{doc.id}/file/')
+        assert response.status_code == status.HTTP_404_NOT_FOUND
+
+    def test_get_document_download_presigned_url(self, authenticated_client, mocker):
+        user = authenticated_client.user
+        doc = Document.objects.create(
+            user=user,
+            name='download_doc.pdf',
+            storage_key='documents/download_doc.pdf',
+            mime_type='application/pdf',
+            size=1024,
+            status=Document.StatusChoices.READY
+        )
+        mocker.patch(
+            'core.storage.StorageClient.generate_presigned_url',
+            return_value='https://storage.thinkit.ai/documents/download_doc.pdf?signature=123'
+        )
+        response = authenticated_client.get(f'/api/v1/documents/{doc.id}/download/')
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data['error'] is False
+        assert 'url' in response.data['data']
+        assert 'https://storage.thinkit.ai/' in response.data['data']['url']
+
