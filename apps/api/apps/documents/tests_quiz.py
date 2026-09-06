@@ -245,3 +245,42 @@ class TestQuizBackend:
         # Verify cascade deletion
         assert Quiz.objects.filter(id=quiz_id).count() == 0
         assert QuizQuestion.objects.filter(quiz_id=quiz_id).count() == 0
+
+    @patch('urllib.request.urlopen')
+    def test_gemini_fallback_on_404(self, mock_urlopen, authenticated_client, sample_document):
+        import urllib.error
+        from io import BytesIO
+        import json
+
+        # First model call raises HTTP 404 (model deprecated / unavailable)
+        err_fp = BytesIO(b'{"error": {"code": 404, "message": "This model is no longer available to new users."}}')
+        http_err_404 = urllib.error.HTTPError(
+            url="http://test", code=404, msg="Not Found", hdrs={}, fp=err_fp
+        )
+
+        # Second model call (fallback) succeeds with valid structured quiz
+        success_body = json.dumps({
+            "candidates": [
+                {
+                    "content": {
+                        "parts": [{"text": json.dumps(MOCK_GEMINI_QUIZ_RESPONSE)}]
+                    }
+                }
+            ]
+        }).encode('utf-8')
+
+        class MockResponse:
+            def __enter__(self):
+                return self
+            def __exit__(self, *args):
+                pass
+            def read(self):
+                return success_body
+
+        mock_urlopen.side_effect = [http_err_404, MockResponse()]
+
+        response = authenticated_client.post(f'/api/v1/documents/{sample_document.id}/generate-quiz/')
+        assert response.status_code == status.HTTP_201_CREATED
+        assert response.data['error'] is False
+        assert mock_urlopen.call_count == 2
+

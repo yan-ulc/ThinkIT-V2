@@ -9,7 +9,10 @@ from apps.documents.models import Document, Quiz, QuizQuestion
 logger = logging.getLogger(__name__)
 
 class QuizGeneratorService:
-    def __init__(self, api_key: str = None, model_name: str = "gemini-2.5-flash"):
+    DEFAULT_MODEL = "gemini-3.5-flash"
+    FALLBACK_MODELS = ["gemini-3.5-flash", "gemini-3.6-flash", "gemini-flash-latest"]
+
+    def __init__(self, api_key: str = None, model_name: str = None):
         self.api_key = (
             api_key
             or getattr(settings, 'GEMINI_API_KEY', None)
@@ -17,7 +20,7 @@ class QuizGeneratorService:
             or os.getenv('GEMINI_API_KEY')
             or os.getenv('GOOGLE_API_KEY')
         )
-        self.model_name = model_name
+        self.model_name = model_name or self.DEFAULT_MODEL
 
     def generate_quiz_for_document(self, document: Document, user) -> Quiz:
         """
@@ -112,7 +115,11 @@ class QuizGeneratorService:
         if not self.api_key:
             raise ValueError("GEMINI_API_KEY is not configured.")
 
-        url = f"https://generativelanguage.googleapis.com/v1beta/models/{self.model_name}:generateContent?key={self.api_key}"
+        # Candidate models to try in cascading order
+        models_to_try = [self.model_name]
+        for m in self.FALLBACK_MODELS:
+            if m not in models_to_try:
+                models_to_try.append(m)
 
         prompt = f"""
 Anda adalah pakar pembuat materi ujian dan kartu belajar profesional (Quiz & Flashcard Generator) untuk ThinkIT AI Document Workspace.
@@ -164,22 +171,35 @@ Format output WAJIB JSON murni tanpa pembuka/penutup markdown dengan struktur be
             }
         }
 
-        req = urllib.request.Request(
-            url,
-            data=json.dumps(payload).encode('utf-8'),
-            headers={'Content-Type': 'application/json'},
-            method='POST'
-        )
+        last_error = None
+        for model in models_to_try:
+            url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={self.api_key}"
+            req = urllib.request.Request(
+                url,
+                data=json.dumps(payload).encode('utf-8'),
+                headers={'Content-Type': 'application/json'},
+                method='POST'
+            )
 
-        try:
-            with urllib.request.urlopen(req, timeout=45) as resp:
-                data = json.loads(resp.read().decode('utf-8'))
-                text_content = data['candidates'][0]['content']['parts'][0]['text']
-                return json.loads(text_content)
-        except urllib.error.HTTPError as e:
-            err_msg = e.read().decode('utf-8', errors='replace')
-            logger.error(f"Gemini API error ({e.code}): {err_msg}")
-            raise RuntimeError(f"Gagal memanggil Gemini API ({e.code}): {err_msg}")
-        except Exception as e:
-            logger.error(f"Unexpected error calling Gemini API: {e}")
-            raise
+            try:
+                logger.info(f"Attempting quiz generation with Gemini model: {model}")
+                with urllib.request.urlopen(req, timeout=30) as resp:
+                    data = json.loads(resp.read().decode('utf-8'))
+                    text_content = data['candidates'][0]['content']['parts'][0]['text']
+                    logger.info(f"Successfully generated quiz using model: {model}")
+                    return json.loads(text_content)
+            except urllib.error.HTTPError as e:
+                err_msg = e.read().decode('utf-8', errors='replace')
+                last_error = f"Gemini API ({model}) error HTTP {e.code}: {err_msg}"
+                logger.warning(f"Model {model} failed with HTTP {e.code}. Attempting fallback...")
+                if e.code in (404, 503, 429):
+                    continue
+                raise RuntimeError(f"Gagal memanggil Gemini API ({e.code}): {err_msg}")
+            except Exception as e:
+                last_error = f"Model {model} error: {str(e)}"
+                logger.warning(f"Model {model} failed with error: {e}. Attempting fallback...")
+                continue
+
+        logger.error(f"All Gemini candidate models failed: {last_error}")
+        raise RuntimeError(f"Gagal memanggil Gemini API setelah mencoba model {models_to_try}: {last_error}")
+
