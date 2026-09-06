@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import { ArrowLeft, Bot, FileText, Send, User, PanelLeftClose, PanelLeftOpen, MessageSquare, BookOpen, ExternalLink } from "lucide-react";
+import { ArrowLeft, Bot, FileText, Send, User, PanelLeftClose, PanelLeftOpen, MessageSquare, BookOpen, ExternalLink, GraduationCap } from "lucide-react";
 import { motion } from "framer-motion";
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
@@ -212,6 +212,16 @@ export default function ChatPage() {
               Chat
             </button>
           </div>
+
+          {/* Practice Quiz Link */}
+          <Link
+            href={`/quiz/${documentId}`}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-purple-500/30 bg-purple-500/10 hover:bg-purple-500/20 text-xs font-medium text-purple-300 hover:text-white transition-all shadow-sm"
+            title="Practice Quiz & Flashcards"
+          >
+            <GraduationCap className="w-3.5 h-3.5 text-purple-400" />
+            <span className="hidden sm:inline">Practice Quiz</span>
+          </Link>
 
           {/* Desktop PDF Toggle */}
           <button
