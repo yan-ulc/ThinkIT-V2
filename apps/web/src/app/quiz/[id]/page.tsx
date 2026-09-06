@@ -307,7 +307,7 @@ export default function QuizPage({ params }: PageProps) {
                   {activeQuiz?.title || "AI Quiz & Flashcards"}
                 </h1>
                 <span className="hidden sm:inline-block px-2 py-0.5 rounded-full bg-brand-500/15 text-brand-300 text-[10px] font-semibold border border-brand-500/30">
-                  Gemini 2.5 Flash
+                  Gemini Flash
                 </span>
               </div>
               <p className="text-xs text-gray-400 truncate max-w-xs">
@@ -387,7 +387,7 @@ export default function QuizPage({ params }: PageProps) {
               </div>
               <div className="absolute -inset-1 rounded-2xl bg-brand-500/20 blur-lg -z-10"></div>
             </div>
-            <h3 className="text-xl font-bold text-white mb-2">Analyzing Document with Gemini 2.5</h3>
+            <h3 className="text-xl font-bold text-white mb-2">Analyzing Document with Gemini Flash</h3>
             <p className="text-sm text-gray-400 max-w-xs mb-4">
               Extracting key concepts, synthesizing 5 practice questions with explanations, and building flashcards...
             </p>
