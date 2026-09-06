@@ -1,14 +1,15 @@
-from rest_framework import viewsets, status
+from rest_framework import viewsets, status, mixins
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.parsers import MultiPartParser, FormParser
 from django.db.models import Sum
 from django.http import FileResponse
-from .models import Document
-from .serializers import DocumentSerializer, DocumentUploadSerializer
+from .models import Document, Quiz, QuizQuestion
+from .serializers import DocumentSerializer, DocumentUploadSerializer, QuizSerializer
 from .tasks import process_document_task
 from core.storage import StorageClient
+from core.quiz_generator import QuizGeneratorService
 import uuid
 
 class DocumentViewSet(viewsets.ModelViewSet):
@@ -146,3 +147,58 @@ class DocumentViewSet(viewsets.ModelViewSet):
                 'ai_queries_used': ai_queries_used,
             }
         }, status=status.HTTP_200_OK)
+
+    @action(detail=True, methods=['post'], url_path='generate-quiz')
+    def generate_quiz(self, request, pk=None):
+        doc = self.get_object()
+        if doc.status != Document.StatusChoices.READY:
+            return Response({
+                'error': True,
+                'message': f'Cannot generate quiz. Document status is {doc.status}. Document must be READY.'
+            }, status=status.HTTP_400_BAD_REQUEST)
+
+        generator = QuizGeneratorService()
+        try:
+            quiz = generator.generate_quiz_for_document(doc, request.user)
+            return Response({
+                'error': False,
+                'message': 'Quiz generated successfully',
+                'data': QuizSerializer(quiz).data
+            }, status=status.HTTP_201_CREATED)
+        except ValueError as e:
+            return Response({
+                'error': True,
+                'message': str(e)
+            }, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            return Response({
+                'error': True,
+                'message': f'Failed to generate quiz: {str(e)}'
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+    @action(detail=True, methods=['get'], url_path='quizzes')
+    def quizzes(self, request, pk=None):
+        doc = self.get_object()
+        quizzes = Quiz.objects.filter(document=doc, user=request.user).prefetch_related('questions').order_by('-created_at')
+        return Response({
+            'error': False,
+            'message': 'Quizzes retrieved successfully',
+            'data': QuizSerializer(quizzes, many=True).data
+        }, status=status.HTTP_200_OK)
+
+
+class QuizViewSet(viewsets.GenericViewSet, mixins.RetrieveModelMixin, mixins.ListModelMixin, mixins.DestroyModelMixin):
+    permission_classes = [IsAuthenticated]
+    serializer_class = QuizSerializer
+
+    def get_queryset(self):
+        return Quiz.objects.filter(user=self.request.user).prefetch_related('questions').order_by('-created_at')
+
+    def destroy(self, request, *args, **kwargs):
+        quiz = self.get_object()
+        quiz.delete()
+        return Response({
+            'error': False,
+            'message': 'Quiz deleted successfully'
+        }, status=status.HTTP_200_OK)
+

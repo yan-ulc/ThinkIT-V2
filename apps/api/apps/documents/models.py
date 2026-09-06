@@ -68,3 +68,44 @@ def broadcast_document_update(sender, instance, **kwargs):
         r.publish(f"user_{instance.user_id}_docs", "updated")
     except Exception as e:
         pass # Best effort
+
+
+class Quiz(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    document = models.ForeignKey(Document, on_delete=models.CASCADE, related_name='quizzes')
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='quizzes')
+    title = models.CharField(max_length=255)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        indexes = [
+            models.Index(fields=['user', 'document']),
+        ]
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"{self.title} ({self.document.name})"
+
+
+class QuizQuestion(models.Model):
+    class QuestionType(models.TextChoices):
+        MULTIPLE_CHOICE = 'MCQ', 'Multiple Choice'
+        FLASHCARD = 'FLASHCARD', 'Flashcard'
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    quiz = models.ForeignKey(Quiz, on_delete=models.CASCADE, related_name='questions')
+    question_type = models.CharField(max_length=20, choices=QuestionType.choices, default=QuestionType.MULTIPLE_CHOICE)
+    question_text = models.TextField()
+    options = models.JSONField(default=list, blank=True)
+    correct_answer = models.CharField(max_length=255, blank=True)
+    explanation = models.TextField(blank=True)
+    order = models.IntegerField(default=0)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['order', 'created_at']
+
+    def __str__(self):
+        return f"Q{self.order}: {self.question_text[:50]}"
+

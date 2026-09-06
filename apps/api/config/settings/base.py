@@ -114,3 +114,9 @@ R2_ENDPOINT_URL = env('R2_ENDPOINT_URL', default=None)
 R2_ACCESS_KEY_ID = env('R2_ACCESS_KEY_ID', default='')
 R2_SECRET_ACCESS_KEY = env('R2_SECRET_ACCESS_KEY', default='')
 R2_BUCKET_NAME = env('R2_BUCKET_NAME', default='thinkit')
+
+# AI Configuration
+GROQ_API_KEY = env('GROQ_API_KEY', default='')
+GOOGLE_API_KEY = env('GOOGLE_API_KEY', default='')
+GEMINI_API_KEY = env('GEMINI_API_KEY', default='')
+
