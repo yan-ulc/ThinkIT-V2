@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Brain, FileText, LogOut, MessageSquare, Plus, UploadCloud, Loader2, HardDrive, Sparkles, Search, X } from "lucide-react";
+import { Brain, FileText, LogOut, MessageSquare, Plus, UploadCloud, Loader2, HardDrive, Sparkles, Search, X, GraduationCap } from "lucide-react";
 import { motion } from "framer-motion";
 import { fetchApi, API_URL } from "@/lib/api";
 
@@ -344,17 +344,31 @@ export default function DashboardPage() {
                     <h4 className="font-semibold text-lg truncate mb-1" title={doc.name}>{doc.name}</h4>
                     <p className="text-sm text-gray-500 mb-6">{formatFileSize(doc.size)}</p>
                     
-                    <Link 
-                      href={`/chat/${doc.id}`}
-                      className={`mt-auto flex items-center justify-center gap-2 w-full py-3 rounded-xl font-semibold transition-all ${
-                        doc.status === "READY" 
-                          ? "bg-brand-600 hover:bg-brand-500 text-white" 
-                          : "bg-white/5 text-gray-500 pointer-events-none"
-                      }`}
-                    >
-                      <MessageSquare className="w-4 h-4" />
-                      Chat with PDF
-                    </Link>
+                    <div className="mt-auto flex items-center gap-2">
+                      <Link 
+                        href={`/chat/${doc.id}`}
+                        className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl font-semibold text-xs sm:text-sm transition-all ${
+                          doc.status === "READY" 
+                            ? "bg-brand-600 hover:bg-brand-500 text-white shadow-md shadow-brand-600/20" 
+                            : "bg-white/5 text-gray-500 pointer-events-none"
+                        }`}
+                      >
+                        <MessageSquare className="w-4 h-4" />
+                        <span>Chat</span>
+                      </Link>
+                      <Link 
+                        href={`/quiz/${doc.id}`}
+                        className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl font-semibold text-xs sm:text-sm transition-all border border-purple-500/30 ${
+                          doc.status === "READY" 
+                            ? "bg-purple-500/10 hover:bg-purple-500/20 text-purple-300 hover:text-white" 
+                            : "bg-white/5 text-gray-500 pointer-events-none border-transparent"
+                        }`}
+                        title="AI Practice Quiz & Flashcards"
+                      >
+                        <GraduationCap className="w-4 h-4" />
+                        <span>Quiz</span>
+                      </Link>
+                    </div>
                   </div>
                 ))}
               </div>

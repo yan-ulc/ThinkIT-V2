@@ -83,3 +83,19 @@ body {
     transform: translate(-20px, 20px) scale(0.9);
   }
 }
+
+/* 3D Flip Card Utilities */
+.perspective {
+  perspective: 1000px;
+}
+.preserve-3d {
+  transform-style: preserve-3d;
+}
+.backface-hidden {
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+}
+.rotate-y-180 {
+  transform: rotateY(180deg);
+}
+

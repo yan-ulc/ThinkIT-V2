@@ -1214,7 +1214,7 @@ Tidak semua hal ditest — prioritas berdasarkan risiko dan value.
 - [ ] Endpoint REST API `POST /api/v1/documents/:id/generate-quiz/` & `GET /api/v1/documents/:id/quizzes/`
 - [ ] Pytest test suite untuk verifikasi backend quiz generator
 
-* **Issue:** [Issue #37 - [Sprint 8] Implement Interactive Quiz Runner & Flashcard Study Mode UI](https://github.com/yan-ulc/ThinkIT-V2/issues/37) *(Open)*
+* **Issue:** [Issue #36 - [Sprint 8] Implement Interactive Quiz Runner and Flashcard Study Mode UI](https://github.com/yan-ulc/ThinkIT-V2/issues/36) *(Open)*
 - [ ] Komponen Quiz Runner interaktif dengan feedback jawaban instan & ringkasan skor
 - [ ] Mode belajar Flashcard 3D-flip untuk konsep kunci dokumen
 - [ ] Fitur ekspor kuis & kartu belajar dalam format JSON/Markdown
