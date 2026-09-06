@@ -2,6 +2,8 @@
 
 > Blueprint & Project Plan — "software production beneran", bukan tutorial CRUD.
 
+[![Live Demo](https://img.shields.io/badge/Live_Demo-Try_ThinkIT-7C3AED?style=for-the-badge&logo=rocket&logoColor=white)](http://16.170.201.95:3000/dashboard)
+
 Dokumen ini adalah **single source of truth** untuk arsitektur, keputusan teknis, dan roadmap pengembangan ThinkIT: aplikasi personal di mana user upload dokumen sendiri, dokumen diproses AI di background, lalu user bisa chat dengan AI berdasarkan isi dokumennya sendiri (RAG). **Tidak ada fitur multi-user/workspace/grup** — murni per-akun individual, fokus untuk belajar system design end-to-end.
 
 ---
