@@ -1208,10 +1208,17 @@ Tidak semua hal ditest — prioritas berdasarkan risiko dan value.
 
 #### 🎯 Sprint 8 — AI Question & Quiz Generator
 * **Milestone:** [Milestone 8: AI Question & Quiz Generator](https://github.com/yan-ulc/ThinkIT-V2/milestone/8)
-* **Issue:** [Issue #19 - [Sprint 8] Implement AI Question and Quiz Generator Feature](https://github.com/yan-ulc/ThinkIT-V2/issues/19) *(Open)*
-- [ ] Endpoint API backend untuk automatic quiz & question generation dari isi dokumen
-- [ ] Komponen UI interaktif untuk latihan soal & flashcard belajar
-- [ ] Fitur simpan & ekspor bank soal hasil buatan AI
+* **Issue:** [Issue #19 - [Sprint 8] Implement AI Quiz Generator Backend API & Database Models](https://github.com/yan-ulc/ThinkIT-V2/issues/19) *(Open)*
+- [ ] Database models `Quiz` dan `QuizQuestion` di PostgreSQL
+- [ ] Gemini AI Quiz Generation service (`gemini-2.5-flash`) dengan structured JSON output
+- [ ] Endpoint REST API `POST /api/v1/documents/:id/generate-quiz/` & `GET /api/v1/documents/:id/quizzes/`
+- [ ] Pytest test suite untuk verifikasi backend quiz generator
+
+* **Issue:** [Issue #37 - [Sprint 8] Implement Interactive Quiz Runner & Flashcard Study Mode UI](https://github.com/yan-ulc/ThinkIT-V2/issues/37) *(Open)*
+- [ ] Komponen Quiz Runner interaktif dengan feedback jawaban instan & ringkasan skor
+- [ ] Mode belajar Flashcard 3D-flip untuk konsep kunci dokumen
+- [ ] Fitur ekspor kuis & kartu belajar dalam format JSON/Markdown
+- [ ] Integrasi tombol navigasi kuis di Dashboard dan Chat room
 
 #### 🎯 Sprint 9 — Full UI Polish, Design System Consistency & Theme System
 * **Milestone:** [Milestone 9: UI Polish & Design System Consistency](https://github.com/yan-ulc/ThinkIT-V2/milestone/9)
