@@ -2,25 +2,26 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import { ArrowLeft, Bot, FileText, Send, User, PanelLeftClose, PanelLeftOpen, MessageSquare } from "lucide-react";
+import { ArrowLeft, Bot, FileText, Send, User, PanelLeftClose, PanelLeftOpen, MessageSquare, BookOpen, ExternalLink } from "lucide-react";
 import { motion } from "framer-motion";
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 
 import { useParams } from "next/navigation";
 import { fetchApi } from "@/lib/api";
-import PdfViewer from "@/components/pdf-viewer/PdfViewer";
+import PdfViewer, { Citation } from "@/components/pdf-viewer/PdfViewer";
 
 interface Message {
   role: "user" | "assistant";
   content: string;
+  references?: Citation[];
 }
 
 interface ChatMessageRaw {
   id: string;
   sender: "USER" | "AI";
   content: string;
-  references?: unknown[];
+  references?: Citation[];
   created_at: string;
 }
 
@@ -39,6 +40,8 @@ export default function ChatPage() {
   const [mobileTab, setMobileTab] = useState<"viewer" | "chat">("chat");
   const [input, setInput] = useState("");
   const [sessionId, setSessionId] = useState<string | null>(null);
+  const [targetPage, setTargetPage] = useState<number | undefined>(undefined);
+  const [activeCitation, setActiveCitation] = useState<Citation | null>(null);
   const [messages, setMessages] = useState<Message[]>([
     { role: "assistant", content: "Hi there! I have read your document. What would you like to know about it?" }
   ]);
@@ -71,7 +74,7 @@ export default function ChatPage() {
           if (session.messages && session.messages.length > 0) {
             const history = session.messages.flatMap((m: ChatMessageRaw): Message[] => {
                if (m.sender === 'USER') return [{ role: 'user', content: m.content }];
-               if (m.sender === 'AI') return [{ role: 'assistant', content: m.content }];
+               if (m.sender === 'AI') return [{ role: 'assistant', content: m.content, references: m.references }];
                return [];
             });
             setMessages([
@@ -86,6 +89,17 @@ export default function ChatPage() {
     };
     fetchHistory();
   }, [documentId]);
+
+  const handleCitationClick = (citation: Citation) => {
+    setActiveCitation(citation);
+    if (citation.page && citation.page > 0) {
+      setTargetPage(citation.page);
+    }
+    if (!showViewer) {
+      setShowViewer(true);
+    }
+    setMobileTab("viewer");
+  };
 
   const handleSend = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -113,9 +127,11 @@ export default function ChatPage() {
         setSessionId(res.data.session_id);
       }
       
+      const aiMsg = res.data?.ai_message;
       setMessages(prev => [...prev, { 
         role: "assistant", 
-        content: res.data?.ai_message?.content || "Sorry, I couldn't generate an answer." 
+        content: aiMsg?.content || "Sorry, I couldn't generate an answer.",
+        references: aiMsg?.references || []
       }]);
     } catch (err) {
       const error = err instanceof Error ? err : new Error("Unknown error");
@@ -219,6 +235,9 @@ export default function ChatPage() {
               documentId={documentId} 
               documentName={document?.name} 
               onClose={() => setShowViewer(false)}
+              targetPage={targetPage}
+              activeCitation={activeCitation}
+              onClearCitation={() => setActiveCitation(null)}
             />
           </div>
         )}
@@ -228,6 +247,9 @@ export default function ChatPage() {
           <PdfViewer 
             documentId={documentId} 
             documentName={document?.name}
+            targetPage={targetPage}
+            activeCitation={activeCitation}
+            onClearCitation={() => setActiveCitation(null)}
           />
         </div>
 
@@ -256,34 +278,69 @@ export default function ChatPage() {
                   : "glass border border-white/10 rounded-tl-sm text-gray-200"
               }`}>
                 {msg.role === "assistant" ? (
-                  <ReactMarkdown 
-                    remarkPlugins={[remarkGfm]}
-                    components={{
-                      p: ({...props}) => <p className="mb-4 last:mb-0" {...props} />,
-                      ul: ({...props}) => <ul className="list-disc pl-6 mb-4 space-y-1" {...props} />,
-                      ol: ({...props}) => <ol className="list-decimal pl-6 mb-4 space-y-1" {...props} />,
-                      li: ({...props}) => <li className="" {...props} />,
-                      h1: ({...props}) => <h1 className="text-xl font-bold mb-4 mt-6 text-white" {...props} />,
-                      h2: ({...props}) => <h2 className="text-lg font-bold mb-3 mt-5 text-white" {...props} />,
-                      h3: ({...props}) => <h3 className="text-base font-bold mb-3 mt-4 text-white" {...props} />,
-                      strong: ({...props}) => <strong className="font-bold text-white" {...props} />,
-                      a: ({...props}) => <a className="text-brand-400 hover:underline" target="_blank" rel="noreferrer" {...props} />,
-                      code: ({ className, children, ...props }) => {
-                        const isInline = !className?.includes('language-');
-                        return isInline
-                          ? <code className="bg-black/40 px-1.5 py-0.5 rounded text-brand-300 font-mono text-xs" {...props}>{children}</code>
-                          : <div className="bg-black/60 p-4 rounded-xl border border-white/10 mb-4 overflow-x-auto"><code className="text-gray-300 font-mono text-xs leading-relaxed" {...props}>{children}</code></div>;
-                      },
-                      blockquote: ({...props}) => <blockquote className="border-l-2 border-brand-500 pl-4 italic text-gray-400 mb-4" {...props} />,
-                      table: ({...props}) => <div className="overflow-x-auto mb-4 border border-white/10 rounded-lg"><table className="w-full text-left border-collapse" {...props} /></div>,
-                      thead: ({...props}) => <thead className="bg-white/5" {...props} />,
-                      th: ({...props}) => <th className="border-b border-white/10 p-3 font-semibold text-white text-xs uppercase tracking-wider" {...props} />,
-                      td: ({...props}) => <td className="border-b border-white/5 p-3 text-gray-300" {...props} />,
-                      tr: ({...props}) => <tr className="last:border-0" {...props} />,
-                    }}
-                  >
-                    {msg.content}
-                  </ReactMarkdown>
+                  <>
+                    <ReactMarkdown 
+                      remarkPlugins={[remarkGfm]}
+                      components={{
+                        p: ({...props}) => <p className="mb-4 last:mb-0" {...props} />,
+                        ul: ({...props}) => <ul className="list-disc pl-6 mb-4 space-y-1" {...props} />,
+                        ol: ({...props}) => <ol className="list-decimal pl-6 mb-4 space-y-1" {...props} />,
+                        li: ({...props}) => <li className="" {...props} />,
+                        h1: ({...props}) => <h1 className="text-xl font-bold mb-4 mt-6 text-white" {...props} />,
+                        h2: ({...props}) => <h2 className="text-lg font-bold mb-3 mt-5 text-white" {...props} />,
+                        h3: ({...props}) => <h3 className="text-base font-bold mb-3 mt-4 text-white" {...props} />,
+                        strong: ({...props}) => <strong className="font-bold text-white" {...props} />,
+                        a: ({...props}) => <a className="text-brand-400 hover:underline" target="_blank" rel="noreferrer" {...props} />,
+                        code: ({ className, children, ...props }) => {
+                          const isInline = !className?.includes('language-');
+                          return isInline
+                            ? <code className="bg-black/40 px-1.5 py-0.5 rounded text-brand-300 font-mono text-xs" {...props}>{children}</code>
+                            : <div className="bg-black/60 p-4 rounded-xl border border-white/10 mb-4 overflow-x-auto"><code className="text-gray-300 font-mono text-xs leading-relaxed" {...props}>{children}</code></div>;
+                        },
+                        blockquote: ({...props}) => <blockquote className="border-l-2 border-brand-500 pl-4 italic text-gray-400 mb-4" {...props} />,
+                        table: ({...props}) => <div className="overflow-x-auto mb-4 border border-white/10 rounded-lg"><table className="w-full text-left border-collapse" {...props} /></div>,
+                        thead: ({...props}) => <thead className="bg-white/5" {...props} />,
+                        th: ({...props}) => <th className="border-b border-white/10 p-3 font-semibold text-white text-xs uppercase tracking-wider" {...props} />,
+                        td: ({...props}) => <td className="border-b border-white/5 p-3 text-gray-300" {...props} />,
+                        tr: ({...props}) => <tr className="last:border-0" {...props} />,
+                      }}
+                    >
+                      {msg.content}
+                    </ReactMarkdown>
+
+                    {msg.references && msg.references.length > 0 && (
+                      <div className="mt-3 pt-3 border-t border-white/10 space-y-2">
+                        <div className="flex items-center gap-1.5 text-xs text-brand-300 font-medium">
+                          <BookOpen className="w-3.5 h-3.5" />
+                          <span>Cited Sources ({msg.references.length})</span>
+                        </div>
+                        <div className="flex flex-wrap gap-2">
+                          {msg.references.map((ref, refIdx) => (
+                            <button
+                              key={refIdx}
+                              type="button"
+                              onClick={() => handleCitationClick(ref)}
+                              className="group flex items-center gap-2 px-2.5 py-1.5 rounded-lg bg-white/5 hover:bg-brand-500/20 border border-white/10 hover:border-brand-500/40 text-left transition-all"
+                              title={ref.snippet ? `"${ref.snippet.slice(0, 100)}..."` : `Page ${ref.page}`}
+                            >
+                              <span className="w-4 h-4 rounded-full bg-brand-500/20 group-hover:bg-brand-500 text-brand-300 group-hover:text-white text-[10px] font-bold flex items-center justify-center transition-colors shrink-0">
+                                {refIdx + 1}
+                              </span>
+                              <span className="text-xs text-gray-300 group-hover:text-white font-medium">
+                                Page {ref.page || 1}
+                              </span>
+                              {ref.similarity_score !== undefined && (
+                                <span className="text-[10px] text-gray-500 group-hover:text-brand-300">
+                                  {Math.round(ref.similarity_score * 100)}% match
+                                </span>
+                              )}
+                              <ExternalLink className="w-3 h-3 text-gray-500 group-hover:text-brand-400 transition-colors ml-0.5 shrink-0" />
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </>
                 ) : (
                   msg.content
                 )}

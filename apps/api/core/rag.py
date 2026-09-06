@@ -59,10 +59,23 @@ class RAGService:
             "question": question
         })
         
-        # Return answer and referenced chunks for transparency
-        references = [
-            {"document_id": str(chunk.document.id), "document_name": chunk.document.name, "chunk_index": chunk.chunk_index} 
-            for chunk in chunks
-        ]
-        
+        # Return answer and referenced chunks for interactive preview and citation highlighting
+        references = []
+        for chunk in chunks:
+            raw_content = chunk.content.strip().replace('\n', ' ')
+            snippet = (raw_content[:200] + '...') if len(raw_content) > 200 else raw_content
+            estimated_page = (chunk.chunk_index // 2) + 1
+            distance_val = getattr(chunk, 'distance', None)
+            similarity_score = round(max(0.0, 1.0 - (float(distance_val) / 2.0)), 2) if distance_val is not None else 0.85
+
+            references.append({
+                "document_id": str(chunk.document.id),
+                "document_name": chunk.document.name,
+                "chunk_index": chunk.chunk_index,
+                "page": estimated_page,
+                "snippet": snippet,
+                "similarity_score": similarity_score,
+                "token_count": getattr(chunk, 'token_count', 0),
+            })
+
         return answer, references

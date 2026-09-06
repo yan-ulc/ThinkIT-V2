@@ -19,12 +19,25 @@ import {
 } from "lucide-react";
 import { API_URL, fetchApi } from "@/lib/api";
 
+export interface Citation {
+  document_id: string;
+  document_name: string;
+  chunk_index: number;
+  page: number;
+  snippet?: string;
+  similarity_score?: number;
+  token_count?: number;
+}
+
 interface PdfViewerProps {
   documentId: string;
   documentName?: string;
   onClose?: () => void;
   className?: string;
   initialPage?: number;
+  targetPage?: number;
+  activeCitation?: Citation | null;
+  onClearCitation?: () => void;
 }
 
 export default function PdfViewer({
@@ -33,6 +46,9 @@ export default function PdfViewer({
   onClose,
   className = "",
   initialPage = 1,
+  targetPage,
+  activeCitation,
+  onClearCitation,
 }: PdfViewerProps) {
   const [pdfUrl, setPdfUrl] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -42,6 +58,16 @@ export default function PdfViewer({
   const [zoom, setZoom] = useState(100);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (targetPage && targetPage > 0) {
+      const timer = setTimeout(() => {
+        setPage(targetPage);
+        setPageInput(targetPage.toString());
+      }, 0);
+      return () => clearTimeout(timer);
+    }
+  }, [targetPage]);
 
   const [reloadKey, setReloadKey] = useState(0);
 
@@ -309,6 +335,33 @@ export default function PdfViewer({
           )}
         </div>
       </div>
+
+      {/* Active Citation Highlight Banner */}
+      {activeCitation && (
+        <div className="px-4 py-2 bg-brand-500/15 border-b border-brand-500/30 flex items-center justify-between gap-3 text-xs text-brand-300 animate-in fade-in slide-in-from-top-2 duration-200">
+          <div className="flex items-center gap-2 min-w-0">
+            <span className="px-2 py-0.5 rounded-full bg-brand-500/30 text-brand-200 font-semibold text-[10px] tracking-wider shrink-0 border border-brand-500/40 uppercase">
+              PAGE {activeCitation.page} • CHUNK #{activeCitation.chunk_index}
+            </span>
+            {activeCitation.snippet && (
+              <span className="truncate text-gray-300 italic text-[11px]" title={activeCitation.snippet}>
+                &ldquo;{activeCitation.snippet}&rdquo;
+              </span>
+            )}
+          </div>
+          {onClearCitation && (
+            <button
+              type="button"
+              onClick={onClearCitation}
+              className="p-1 hover:bg-white/10 rounded-lg text-gray-400 hover:text-white transition-colors shrink-0"
+              title="Dismiss Citation Highlight"
+              aria-label="Dismiss Citation Highlight"
+            >
+              <X className="w-3.5 h-3.5" />
+            </button>
+          )}
+        </div>
+      )}
 
       {/* Viewer Canvas / Content */}
       <div className="flex-1 relative w-full h-full bg-[#18181b] overflow-hidden flex items-center justify-center">
