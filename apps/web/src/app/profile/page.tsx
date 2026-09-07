@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Brain, FileText, LogOut, User, Loader2, CreditCard } from "lucide-react";
+import { Brain, FileText, LogOut, User, Loader2, CreditCard, GraduationCap } from "lucide-react";
 import { motion } from "framer-motion";
 import { fetchApi } from "@/lib/api";
 
@@ -67,6 +67,10 @@ export default function ProfilePage() {
           <Link href="/dashboard" className="flex items-center gap-3 hover:bg-white/5 text-gray-400 hover:text-white px-4 py-3 rounded-xl transition-colors font-medium">
             <FileText className="w-5 h-5" />
             My Documents
+          </Link>
+          <Link href="/quiz" className="flex items-center gap-3 hover:bg-white/5 text-gray-400 hover:text-white px-4 py-3 rounded-xl transition-colors font-medium">
+            <GraduationCap className="w-5 h-5" />
+            Quiz & Flashcards
           </Link>
           <Link href="/profile" className="flex items-center gap-3 bg-brand-500/20 text-brand-300 px-4 py-3 rounded-xl transition-colors font-medium">
             <User className="w-5 h-5" />

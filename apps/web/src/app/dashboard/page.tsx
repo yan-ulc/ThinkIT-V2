@@ -168,6 +168,10 @@ export default function DashboardPage() {
             <FileText className="w-5 h-5" />
             My Documents
           </Link>
+          <Link href="/quiz" className="flex items-center gap-3 hover:bg-white/5 text-gray-400 hover:text-white px-4 py-3 rounded-xl transition-colors font-medium">
+            <GraduationCap className="w-5 h-5" />
+            Quiz & Flashcards
+          </Link>
           <Link href="/profile" className="flex items-center gap-3 hover:bg-white/5 text-gray-400 hover:text-white px-4 py-3 rounded-xl transition-colors font-medium">
             <Brain className="w-5 h-5" />
             User Profile
