@@ -157,9 +157,31 @@ class DocumentViewSet(viewsets.ModelViewSet):
                 'message': f'Cannot generate quiz. Document status is {doc.status}. Document must be READY.'
             }, status=status.HTTP_400_BAD_REQUEST)
 
+        title = request.data.get('title')
+        if title and isinstance(title, str):
+            title = title.strip()
+            if not title:
+                title = None
+        else:
+            title = None
+
+        num_questions = request.data.get('num_questions', 5)
+        try:
+            num_questions = int(num_questions)
+            if num_questions not in [5, 10, 15, 20]:
+                return Response({
+                    'error': True,
+                    'message': 'Jumlah pertanyaan (num_questions) harus salah satu dari: 5, 10, 15, atau 20.'
+                }, status=status.HTTP_400_BAD_REQUEST)
+        except (ValueError, TypeError):
+            return Response({
+                'error': True,
+                'message': 'num_questions harus berupa bilangan bulat (5, 10, 15, atau 20).'
+            }, status=status.HTTP_400_BAD_REQUEST)
+
         generator = QuizGeneratorService()
         try:
-            quiz = generator.generate_quiz_for_document(doc, request.user)
+            quiz = generator.generate_quiz_for_document(doc, request.user, title=title, num_questions=num_questions)
             return Response({
                 'error': False,
                 'message': 'Quiz generated successfully',

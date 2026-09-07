@@ -19,7 +19,8 @@ import {
   BookOpen, 
   Trophy, 
   AlertCircle,
-  Clock
+  Clock,
+  X
 } from "lucide-react";
 import { motion } from "framer-motion";
 import { fetchApi } from "@/lib/api";
@@ -83,6 +84,11 @@ export default function QuizPage({ params }: PageProps) {
   // Export Copy State
   const [hasCopied, setHasCopied] = useState(false);
 
+  // Quiz Generation Modal State
+  const [isConfigModalOpen, setIsConfigModalOpen] = useState(false);
+  const [quizTitleInput, setQuizTitleInput] = useState("");
+  const [selectedQuestionCount, setSelectedQuestionCount] = useState<5 | 10 | 15 | 20>(5);
+
   // Fetch Document Info
   useEffect(() => {
     const fetchDoc = async () => {
@@ -123,15 +129,24 @@ export default function QuizPage({ params }: PageProps) {
     fetchQuizzes();
   }, [documentId]);
 
-  // Generate New Quiz with Gemini 2.5 Flash
-  const handleGenerateQuiz = async () => {
+  // Generate New Quiz with Gemini Flash
+  const handleGenerateQuiz = async (customTitle?: string, count: number = 5) => {
     if (isGenerating) return;
     setIsGenerating(true);
     setGenerateError(null);
+    setIsConfigModalOpen(false);
 
     try {
+      const payload: { title?: string; num_questions?: number } = {
+        num_questions: count
+      };
+      if (customTitle && customTitle.trim()) {
+        payload.title = customTitle.trim();
+      }
+
       const res = await fetchApi(`/documents/${documentId}/generate-quiz/`, {
-        method: "POST"
+        method: "POST",
+        body: JSON.stringify(payload)
       });
 
       if (res && res.data) {
@@ -145,6 +160,7 @@ export default function QuizPage({ params }: PageProps) {
         setCurrentCardIndex(0);
         setIsCardFlipped(false);
         setActiveTab("quiz");
+        setQuizTitleInput("");
       }
     } catch (err) {
       const message = err instanceof Error ? err.message : "Failed to generate quiz with AI.";
@@ -329,7 +345,7 @@ export default function QuizPage({ params }: PageProps) {
 
           <button
             type="button"
-            onClick={handleGenerateQuiz}
+            onClick={() => setIsConfigModalOpen(true)}
             disabled={isGenerating || document?.status !== "READY"}
             className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-brand-600 to-purple-600 hover:from-brand-500 hover:to-purple-500 text-white text-xs font-semibold shadow-lg shadow-purple-500/20 transition-all disabled:opacity-50"
           >
@@ -413,7 +429,7 @@ export default function QuizPage({ params }: PageProps) {
               Transform <span className="text-white font-semibold">{document?.name || "your document"}</span> into interactive multiple-choice tests and study flashcards powered by Google Gemini.
             </p>
             <button
-              onClick={handleGenerateQuiz}
+              onClick={() => setIsConfigModalOpen(true)}
               disabled={document?.status !== "READY"}
               className="flex items-center gap-2 px-6 py-3 rounded-2xl bg-gradient-to-r from-brand-600 to-purple-600 hover:from-brand-500 hover:to-purple-500 text-white font-semibold text-sm shadow-xl shadow-brand-600/30 hover:scale-[1.02] transition-all disabled:opacity-50"
             >
@@ -645,7 +661,7 @@ export default function QuizPage({ params }: PageProps) {
                       </button>
                       <button
                         type="button"
-                        onClick={handleGenerateQuiz}
+                        onClick={() => setIsConfigModalOpen(true)}
                         className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-brand-600 hover:bg-brand-500 text-white font-semibold text-sm transition-all shadow-lg shadow-brand-600/20"
                       >
                         <Sparkles className="w-4 h-4" />
@@ -774,7 +790,7 @@ export default function QuizPage({ params }: PageProps) {
                   </div>
                   <button
                     type="button"
-                    onClick={handleGenerateQuiz}
+                    onClick={() => setIsConfigModalOpen(true)}
                     disabled={isGenerating}
                     className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-brand-600 hover:bg-brand-500 text-xs font-semibold text-white transition-all shadow"
                   >
@@ -832,6 +848,109 @@ export default function QuizPage({ params }: PageProps) {
                 </div>
               </div>
             )}
+          </div>
+        )}
+
+        {/* QUIZ CONFIGURATION MODAL */}
+        {isConfigModalOpen && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-md">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 15 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="glass p-6 md:p-8 rounded-3xl border border-white/20 max-w-md w-full shadow-2xl relative"
+            >
+              <div className="flex items-center justify-between mb-6 pb-4 border-b border-white/10">
+                <div className="flex items-center gap-3">
+                  <div className="p-2.5 rounded-2xl bg-gradient-to-tr from-brand-600 to-purple-600 text-white shadow-lg shadow-brand-500/20">
+                    <Sparkles className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-bold text-white">Generate AI Quiz</h3>
+                    <p className="text-xs text-gray-400">Atur judul dan jumlah soal kuis</p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setIsConfigModalOpen(false)}
+                  className="p-2 rounded-xl text-gray-400 hover:text-white hover:bg-white/10 transition-all"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              <div className="space-y-5">
+                {/* Quiz Title Input */}
+                <div>
+                  <label className="block text-xs font-semibold text-gray-300 uppercase tracking-wider mb-2">
+                    Judul Kuis (Opsional)
+                  </label>
+                  <input
+                    type="text"
+                    value={quizTitleInput}
+                    onChange={(e) => setQuizTitleInput(e.target.value)}
+                    placeholder={`Default: Kuis: ${document?.name || "Materi Dokumen"}`}
+                    className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white placeholder-gray-500 text-sm focus:outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500 transition-all"
+                  />
+                  <p className="text-[11px] text-gray-500 mt-1">
+                    Bisa dikosongkan untuk memakai judul otomatis dari AI.
+                  </p>
+                </div>
+
+                {/* Question Count Selector */}
+                <div>
+                  <label className="block text-xs font-semibold text-gray-300 uppercase tracking-wider mb-2">
+                    Pilih Jumlah Soal & Flashcards
+                  </label>
+                  <div className="grid grid-cols-2 gap-2.5">
+                    {([
+                      { count: 5, label: "5 Soal", desc: "~7 detik (Cepat)" },
+                      { count: 10, label: "10 Soal", desc: "~15 detik (Standar)" },
+                      { count: 15, label: "15 Soal", desc: "~25 detik (Lengkap)" },
+                      { count: 20, label: "20 Soal", desc: "~35 detik (Komprehensif)" },
+                    ] as const).map((opt) => (
+                      <button
+                        key={opt.count}
+                        type="button"
+                        onClick={() => setSelectedQuestionCount(opt.count)}
+                        className={`p-3 rounded-2xl border text-left transition-all ${
+                          selectedQuestionCount === opt.count
+                            ? "bg-brand-500/20 border-brand-500 text-white shadow-lg shadow-brand-500/10"
+                            : "bg-white/5 border-white/10 text-gray-400 hover:text-white hover:bg-white/10"
+                        }`}
+                      >
+                        <div className="flex items-center justify-between">
+                          <span className="font-bold text-sm">{opt.label}</span>
+                          {selectedQuestionCount === opt.count && (
+                            <CheckCircle2 className="w-4 h-4 text-brand-400 shrink-0" />
+                          )}
+                        </div>
+                        <span className="text-[11px] text-gray-400 block mt-1">{opt.desc}</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              {/* Modal Actions */}
+              <div className="flex items-center justify-end gap-3 mt-8 pt-4 border-t border-white/10">
+                <button
+                  type="button"
+                  onClick={() => setIsConfigModalOpen(false)}
+                  className="px-4 py-2.5 rounded-xl text-sm font-medium text-gray-400 hover:text-white hover:bg-white/10 transition-all"
+                >
+                  Batal
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleGenerateQuiz(quizTitleInput, selectedQuestionCount)}
+                  className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-gradient-to-r from-brand-600 to-purple-600 hover:from-brand-500 hover:to-purple-500 text-white text-sm font-semibold shadow-lg shadow-brand-500/20 transition-all hover:scale-[1.02]"
+                >
+                  <Sparkles className="w-4 h-4" />
+                  <span>Mulai Generate ({selectedQuestionCount} Soal)</span>
+                </button>
+              </div>
+            </motion.div>
           </div>
         )}
       </main>

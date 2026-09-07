@@ -1,5 +1,6 @@
 import pytest
-from unittest.mock import patch
+import json
+from unittest.mock import patch, MagicMock
 from rest_framework.test import APIClient
 from django.contrib.auth import get_user_model
 from rest_framework import status
@@ -283,4 +284,55 @@ class TestQuizBackend:
         assert response.status_code == status.HTTP_201_CREATED
         assert response.data['error'] is False
         assert mock_urlopen.call_count == 2
+
+    @patch('urllib.request.urlopen')
+    def test_generate_quiz_custom_title_and_count(self, mock_urlopen, authenticated_client, sample_document):
+        mock_response = MagicMock()
+        mock_response.read.return_value = json.dumps({
+            "candidates": [
+                {
+                    "content": {
+                        "parts": [{"text": json.dumps(MOCK_GEMINI_QUIZ_RESPONSE)}]
+                    }
+                }
+            ]
+        }).encode('utf-8')
+        mock_urlopen.return_value.__enter__.return_value = mock_response
+
+        payload = {
+            "title": "Kuis Khusus Artificial Intelligence",
+            "num_questions": 10
+        }
+        response = authenticated_client.post(
+            f'/api/v1/documents/{sample_document.id}/generate-quiz/',
+            data=payload,
+            format='json'
+        )
+        assert response.status_code == status.HTTP_201_CREATED
+        assert response.data['error'] is False
+        assert response.data['data']['title'] == "Kuis Khusus Artificial Intelligence"
+
+    def test_generate_quiz_invalid_num_questions(self, authenticated_client, sample_document):
+        # Only 5, 10, 15, 20 are allowed
+        payload = {"num_questions": 7}
+        response = authenticated_client.post(
+            f'/api/v1/documents/{sample_document.id}/generate-quiz/',
+            data=payload,
+            format='json'
+        )
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+        assert response.data['error'] is True
+        assert "5, 10, 15, atau 20" in response.data['message']
+
+    def test_generate_quiz_non_integer_num_questions(self, authenticated_client, sample_document):
+        payload = {"num_questions": "banyak"}
+        response = authenticated_client.post(
+            f'/api/v1/documents/{sample_document.id}/generate-quiz/',
+            data=payload,
+            format='json'
+        )
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+        assert response.data['error'] is True
+        assert "bilangan bulat" in response.data['message']
+
 

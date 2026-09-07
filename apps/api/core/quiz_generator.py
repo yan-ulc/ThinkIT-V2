@@ -22,9 +22,9 @@ class QuizGeneratorService:
         )
         self.model_name = model_name or self.DEFAULT_MODEL
 
-    def generate_quiz_for_document(self, document: Document, user) -> Quiz:
+    def generate_quiz_for_document(self, document: Document, user, title: str = None, num_questions: int = 5) -> Quiz:
         """
-        Generates a comprehensive Quiz (MCQ + Flashcards) from document chunks using Gemini 2.5 Flash
+        Generates a comprehensive Quiz (MCQ + Flashcards) from document chunks using Gemini Flash
         and persists them into the database.
         """
         if document.user_id != user.id:
@@ -52,10 +52,11 @@ class QuizGeneratorService:
         context_text = "\n\n---\n\n".join(context_parts)
 
         # Call Gemini API
-        quiz_data = self._call_gemini_api(document.name, context_text)
+        quiz_data = self._call_gemini_api(document.name, context_text, title=title, num_questions=num_questions)
 
         # Persist Quiz
-        quiz_title = quiz_data.get('title') or f"Kuis: {document.name}"
+        custom_title = title.strip() if (title and isinstance(title, str) and title.strip()) else None
+        quiz_title = custom_title or quiz_data.get('title') or f"Kuis: {document.name}"
         quiz = Quiz.objects.create(
             document=document,
             user=user,
@@ -111,7 +112,7 @@ class QuizGeneratorService:
 
         return quiz
 
-    def _call_gemini_api(self, doc_name: str, context: str) -> dict:
+    def _call_gemini_api(self, doc_name: str, context: str, title: str = None, num_questions: int = 5) -> dict:
         if not self.api_key:
             raise ValueError("GEMINI_API_KEY is not configured.")
 
@@ -121,6 +122,12 @@ class QuizGeneratorService:
             if m not in models_to_try:
                 models_to_try.append(m)
 
+        custom_title_instruction = (
+            f'Judul kuis yang ditentukan pengguna adalah: "{title.strip()}". Wajib gunakan judul ini tepat pada properti "title".'
+            if (title and isinstance(title, str) and title.strip())
+            else '1. Buat judul kuis ("title") yang relevan dan menarik berdasarkan topik dokumen.'
+        )
+
         prompt = f"""
 Anda adalah pakar pembuat materi ujian dan kartu belajar profesional (Quiz & Flashcard Generator) untuk ThinkIT AI Document Workspace.
 Berdasarkan materi dari dokumen "{doc_name}" berikut, buatlah kuis dan kartu belajar yang komprehensif, menguji pemahaman konsep kunci, dan edukatif.
@@ -129,19 +136,19 @@ Konteks Dokumen:
 {context}
 
 Tugas:
-1. Buat judul kuis ("title") yang relevan dan menarik berdasarkan topik dokumen.
-2. Buat tepat 5 pertanyaan pilihan ganda ("questions"):
+{custom_title_instruction}
+2. Buat tepat {num_questions} pertanyaan pilihan ganda ("questions"):
    - "question": Pertanyaan berbobot yang menguji pemahaman konsep (bukan cuma menghafal kata acak).
    - "options": Array berisi 4 opsi jawaban berformat ["A. ...", "B. ...", "C. ...", "D. ..."].
    - "correct_answer": Kunci jawaban yang tepat lengkap dengan opsi (contoh: "A. ...").
    - "explanation": Penjelasan rinci mengapa jawaban tersebut benar dan referensi pembahasannya dari dokumen.
-3. Buat tepat 5 kartu belajar flashcard ("flashcards"):
+3. Buat tepat {num_questions} kartu belajar flashcard ("flashcards"):
    - "front": Istilah penting, rumus, atau konsep kunci yang perlu diingat.
    - "back": Definisi esensial, fungsi, atau rangkuman penjelasan yang padat dan jelas.
 
 Format output WAJIB JSON murni tanpa pembuka/penutup markdown dengan struktur berikut:
 {{
-  "title": "Judul Kuis",
+  "title": "{title.strip() if (title and isinstance(title, str) and title.strip()) else 'Judul Kuis'}",
   "questions": [
     {{
       "question": "Pertanyaan",
@@ -157,6 +164,7 @@ Format output WAJIB JSON murni tanpa pembuka/penutup markdown dengan struktur be
     }}
   ]
 }}
+Pastikan menghasilkan tepat {num_questions} butir pada "questions" dan tepat {num_questions} butir pada "flashcards".
 """
 
         payload = {
