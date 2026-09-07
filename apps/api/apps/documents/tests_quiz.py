@@ -4,7 +4,7 @@ from unittest.mock import patch, MagicMock
 from rest_framework.test import APIClient
 from django.contrib.auth import get_user_model
 from rest_framework import status
-from apps.documents.models import Document, DocumentChunk, Quiz, QuizQuestion
+from apps.documents.models import Document, DocumentChunk, Quiz, QuizQuestion, QuizAttempt
 
 User = get_user_model()
 
@@ -334,5 +334,171 @@ class TestQuizBackend:
         assert response.status_code == status.HTTP_400_BAD_REQUEST
         assert response.data['error'] is True
         assert "bilangan bulat" in response.data['message']
+
+    def test_submit_quiz_full_success(self, authenticated_client, sample_document):
+        user = sample_document.user
+        quiz = Quiz.objects.create(document=sample_document, user=user, title="Test Exam Quiz")
+        q1 = QuizQuestion.objects.create(
+            quiz=quiz,
+            question_type=QuizQuestion.QuestionType.MULTIPLE_CHOICE,
+            question_text="Apa itu Python?",
+            options=["A. Ular", "B. Bahasa Pemrograman", "C. Mobil", "D. Makanan"],
+            correct_answer="B. Bahasa Pemrograman",
+            explanation="Python adalah bahasa pemrograman tingkat tinggi.",
+            order=1
+        )
+        q2 = QuizQuestion.objects.create(
+            quiz=quiz,
+            question_type=QuizQuestion.QuestionType.MULTIPLE_CHOICE,
+            question_text="Perintah mencetak teks di Python?",
+            options=["A. echo", "B. print()", "C. cout", "D. System.out.println"],
+            correct_answer="B. print()",
+            explanation="Fungsi print() digunakan untuk output teks ke konsol.",
+            order=2
+        )
+        # Flashcard question should be ignored in grading count
+        QuizQuestion.objects.create(
+            quiz=quiz,
+            question_type=QuizQuestion.QuestionType.FLASHCARD,
+            question_text="Variable",
+            correct_answer="Tempat penyimpanan data",
+            order=3
+        )
+
+        payload = {
+            "answers": {
+                str(q1.id): "B. Bahasa Pemrograman",
+                str(q2.id): "B. print()"
+            }
+        }
+        res = authenticated_client.post(f'/api/v1/documents/quizzes/{quiz.id}/submit/', data=payload, format='json')
+        assert res.status_code == status.HTTP_201_CREATED
+        assert res.data['error'] is False
+        assert res.data['data']['score'] == 2
+        assert res.data['data']['total_questions'] == 2
+        assert res.data['data']['percentage'] == 100.0
+        assert res.data['data']['is_new_high_score'] is True
+        assert len(res.data['data']['results']) == 2
+        assert QuizAttempt.objects.filter(quiz=quiz, user=user).count() == 1
+
+    def test_submit_quiz_unanswered_rejection(self, authenticated_client, sample_document):
+        user = sample_document.user
+        quiz = Quiz.objects.create(document=sample_document, user=user, title="Test Incomplete Quiz")
+        q1 = QuizQuestion.objects.create(
+            quiz=quiz,
+            question_type=QuizQuestion.QuestionType.MULTIPLE_CHOICE,
+            question_text="Pertanyaan 1",
+            options=["A", "B", "C", "D"],
+            correct_answer="A",
+            order=1
+        )
+        QuizQuestion.objects.create(
+            quiz=quiz,
+            question_type=QuizQuestion.QuestionType.MULTIPLE_CHOICE,
+            question_text="Pertanyaan 2",
+            options=["A", "B", "C", "D"],
+            correct_answer="B",
+            order=2
+        )
+
+        # Only answering Q1, Q2 is missing
+        payload = {
+            "answers": {
+                str(q1.id): "A"
+            }
+        }
+        res = authenticated_client.post(f'/api/v1/documents/quizzes/{quiz.id}/submit/', data=payload, format='json')
+        assert res.status_code == status.HTTP_400_BAD_REQUEST
+        assert res.data['error'] is True
+        assert "Semua soal wajib dijawab" in res.data['message']
+        assert 2 in res.data['unanswered_questions']
+        assert QuizAttempt.objects.filter(quiz=quiz).count() == 0
+
+    def test_submit_quiz_high_score_tracking(self, authenticated_client, sample_document):
+        user = sample_document.user
+        quiz = Quiz.objects.create(document=sample_document, user=user, title="High Score Quiz")
+        q1 = QuizQuestion.objects.create(
+            quiz=quiz,
+            question_type=QuizQuestion.QuestionType.MULTIPLE_CHOICE,
+            question_text="Q1",
+            options=["A", "B"],
+            correct_answer="A",
+            order=1
+        )
+        q2 = QuizQuestion.objects.create(
+            quiz=quiz,
+            question_type=QuizQuestion.QuestionType.MULTIPLE_CHOICE,
+            question_text="Q2",
+            options=["A", "B"],
+            correct_answer="B",
+            order=2
+        )
+
+        # Attempt 1: 50%
+        res1 = authenticated_client.post(
+            f'/api/v1/documents/quizzes/{quiz.id}/submit/',
+            data={"answers": {str(q1.id): "A", str(q2.id): "A"}},
+            format='json'
+        )
+        assert res1.status_code == status.HTTP_201_CREATED
+        assert res1.data['data']['score'] == 1
+        assert res1.data['data']['percentage'] == 50.0
+        assert res1.data['data']['is_new_high_score'] is True
+
+        # Attempt 2: 100%
+        res2 = authenticated_client.post(
+            f'/api/v1/documents/quizzes/{quiz.id}/submit/',
+            data={"answers": {str(q1.id): "A", str(q2.id): "B"}},
+            format='json'
+        )
+        assert res2.status_code == status.HTTP_201_CREATED
+        assert res2.data['data']['score'] == 2
+        assert res2.data['data']['percentage'] == 100.0
+        assert res2.data['data']['is_new_high_score'] is True
+
+        # Attempt 3: 0%
+        res3 = authenticated_client.post(
+            f'/api/v1/documents/quizzes/{quiz.id}/submit/',
+            data={"answers": {str(q1.id): "B", str(q2.id): "A"}},
+            format='json'
+        )
+        assert res3.status_code == status.HTTP_201_CREATED
+        assert res3.data['data']['score'] == 0
+        assert res3.data['data']['percentage'] == 0.0
+        assert res3.data['data']['is_new_high_score'] is False
+        assert res3.data['data']['highest_percentage'] == 100.0
+
+        # Query attempts list endpoint
+        history_res = authenticated_client.get(f'/api/v1/documents/quizzes/{quiz.id}/attempts/')
+        assert history_res.status_code == status.HTTP_200_OK
+        assert history_res.data['data']['total_attempts'] == 3
+        assert history_res.data['data']['highest_percentage'] == 100.0
+        assert len(history_res.data['data']['attempts']) == 3
+
+    def test_quiz_attempt_cascade_delete(self, authenticated_client, sample_document):
+        user = sample_document.user
+        quiz = Quiz.objects.create(document=sample_document, user=user, title="Cascade Delete Quiz")
+        q = QuizQuestion.objects.create(
+            quiz=quiz,
+            question_type=QuizQuestion.QuestionType.MULTIPLE_CHOICE,
+            question_text="Q",
+            options=["A"],
+            correct_answer="A",
+            order=1
+        )
+        QuizAttempt.objects.create(
+            quiz=quiz,
+            user=user,
+            score=1,
+            total_questions=1,
+            percentage=100.0,
+            answers={str(q.id): "A"}
+        )
+        assert QuizAttempt.objects.filter(quiz=quiz).count() == 1
+
+        del_res = authenticated_client.delete(f'/api/v1/documents/quizzes/{quiz.id}/')
+        assert del_res.status_code == status.HTTP_200_OK
+        assert QuizAttempt.objects.filter(quiz=quiz).count() == 0
+
 
 

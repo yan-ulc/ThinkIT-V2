@@ -17,7 +17,8 @@ import {
   Loader2,
   X,
   CheckCircle2,
-  AlertCircle
+  AlertCircle,
+  Trophy
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { fetchApi } from "@/lib/api";
@@ -29,6 +30,9 @@ interface QuizItem {
   title: string;
   created_at: string;
   total_questions: number;
+  highest_score?: number | null;
+  highest_percentage?: number | null;
+  total_attempts?: number;
 }
 
 interface DocumentItem {
@@ -357,9 +361,25 @@ export default function QuizHubPage() {
                         {quiz.title}
                       </h3>
 
-                      <div className="flex items-center gap-1.5 text-xs text-gray-400 mb-6">
-                        <Clock className="w-3.5 h-3.5" />
-                        <span>Dibuat {dateFormatted}</span>
+                      <div className="flex items-center justify-between text-xs text-gray-400 mb-6">
+                        <div className="flex items-center gap-1.5">
+                          <Clock className="w-3.5 h-3.5" />
+                          <span>Dibuat {dateFormatted}</span>
+                        </div>
+
+                        {quiz.highest_percentage !== null && quiz.highest_percentage !== undefined ? (
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-300 border border-amber-500/30 text-[10px] font-semibold">
+                            <Trophy className="w-3 h-3 text-amber-400" />
+                            <span>Tertinggi: {quiz.highest_percentage}%</span>
+                            {quiz.total_attempts && quiz.total_attempts > 1 ? (
+                              <span className="text-amber-400/70 font-normal">({quiz.total_attempts}x)</span>
+                            ) : null}
+                          </span>
+                        ) : (
+                          <span className="text-[10px] text-gray-500">
+                            Belum dikerjakan
+                          </span>
+                        )}
                       </div>
                     </div>
 
