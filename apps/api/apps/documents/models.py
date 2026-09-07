@@ -109,3 +109,25 @@ class QuizQuestion(models.Model):
     def __str__(self):
         return f"Q{self.order}: {self.question_text[:50]}"
 
+
+class QuizAttempt(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    quiz = models.ForeignKey(Quiz, on_delete=models.CASCADE, related_name='attempts')
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='quiz_attempts')
+    score = models.IntegerField(default=0)
+    total_questions = models.IntegerField(default=0)
+    percentage = models.FloatField(default=0.0)
+    answers = models.JSONField(default=dict, blank=True)
+    completed_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        indexes = [
+            models.Index(fields=['quiz', 'user']),
+            models.Index(fields=['user', '-completed_at']),
+        ]
+        ordering = ['-completed_at']
+
+    def __str__(self):
+        return f"Attempt {self.id} on {self.quiz.title} - {self.score}/{self.total_questions} ({self.percentage}%)"
+
+

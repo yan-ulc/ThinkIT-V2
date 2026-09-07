@@ -1,5 +1,6 @@
+from django.db.models import Max
 from rest_framework import serializers
-from .models import Document, DocumentChunk, Quiz, QuizQuestion
+from .models import Document, DocumentChunk, Quiz, QuizQuestion, QuizAttempt
 
 class DocumentSerializer(serializers.ModelSerializer):
     class Meta:
@@ -25,10 +26,28 @@ class QuizQuestionSerializer(serializers.ModelSerializer):
         ]
         read_only_fields = fields
 
+class QuizAttemptSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = QuizAttempt
+        fields = [
+            'id',
+            'quiz',
+            'user',
+            'score',
+            'total_questions',
+            'percentage',
+            'answers',
+            'completed_at',
+        ]
+        read_only_fields = fields
+
 class QuizSerializer(serializers.ModelSerializer):
     questions = QuizQuestionSerializer(many=True, read_only=True)
     document_name = serializers.CharField(source='document.name', read_only=True)
     total_questions = serializers.SerializerMethodField()
+    highest_score = serializers.SerializerMethodField()
+    highest_percentage = serializers.SerializerMethodField()
+    total_attempts = serializers.SerializerMethodField()
 
     class Meta:
         model = Quiz
@@ -40,10 +59,41 @@ class QuizSerializer(serializers.ModelSerializer):
             'created_at',
             'updated_at',
             'total_questions',
+            'highest_score',
+            'highest_percentage',
+            'total_attempts',
             'questions',
         ]
         read_only_fields = fields
 
     def get_total_questions(self, obj):
         return obj.questions.count()
+
+    def get_highest_score(self, obj):
+        request = self.context.get('request')
+        user = request.user if request and request.user.is_authenticated else getattr(obj, 'user', None)
+        if not user:
+            return None
+        attempts = obj.attempts.filter(user=user)
+        if not attempts.exists():
+            return None
+        return attempts.aggregate(Max('score'))['score__max']
+
+    def get_highest_percentage(self, obj):
+        request = self.context.get('request')
+        user = request.user if request and request.user.is_authenticated else getattr(obj, 'user', None)
+        if not user:
+            return None
+        attempts = obj.attempts.filter(user=user)
+        if not attempts.exists():
+            return None
+        return attempts.aggregate(Max('percentage'))['percentage__max']
+
+    def get_total_attempts(self, obj):
+        request = self.context.get('request')
+        user = request.user if request and request.user.is_authenticated else getattr(obj, 'user', None)
+        if not user:
+            return 0
+        return obj.attempts.filter(user=user).count()
+
 
