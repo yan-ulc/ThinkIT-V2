@@ -200,13 +200,6 @@ export default function QuizPage({ params }: PageProps) {
     fetchQuizzes();
   }, [documentId]);
 
-  // Fetch attempts when active quiz changes
-  useEffect(() => {
-    if (activeQuiz?.id) {
-      fetchAttempts(activeQuiz.id);
-    }
-  }, [activeQuiz?.id]);
-
   // Generate New Quiz with Gemini Flash
   const handleGenerateQuiz = async (customTitle?: string, count: number = 5) => {
     if (isGenerating) return;
@@ -1164,7 +1157,7 @@ export default function QuizPage({ params }: PageProps) {
                         <h3 className="text-lg font-bold text-white">Riwayat Percobaan Kuis Ini</h3>
                       </div>
                       <p className="text-xs text-gray-400 mt-0.5">
-                        Statistik dan rekaman semua pengerjaan untuk "{activeQuiz.title}"
+                        Statistik dan rekaman semua pengerjaan untuk &quot;{activeQuiz.title}&quot;
                       </p>
                     </div>
 
@@ -1301,7 +1294,7 @@ export default function QuizPage({ params }: PageProps) {
                     <div>
                       <h3 className="text-lg font-bold text-white">Daftar Paket Kuis Dokumen Ini</h3>
                       <p className="text-xs text-gray-400 mt-0.5">
-                        Semua variasi kuis yang dibuat dari materi "{document?.name || "dokumen ini"}"
+                        Semua variasi kuis yang dibuat dari materi &quot;{document?.name || "dokumen ini"}&quot;
                       </p>
                     </div>
                     <button
