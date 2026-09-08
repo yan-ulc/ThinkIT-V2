@@ -3,9 +3,11 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Brain, FileText, LogOut, MessageSquare, Plus, UploadCloud, Loader2, HardDrive, Sparkles, Search, X, GraduationCap } from "lucide-react";
+import { Brain, FileText, LogOut, MessageSquare, Plus, UploadCloud, Loader2, HardDrive, Sparkles, Search, X, GraduationCap, Filter } from "lucide-react";
 import { motion } from "framer-motion";
 import { fetchApi, API_URL } from "@/lib/api";
+
+type StatusFilter = "ALL" | "READY" | "PROCESSING" | "FAILED";
 
 interface Document {
   id: string;
@@ -30,6 +32,7 @@ export default function DashboardPage() {
   const [isUploading, setIsUploading] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [debouncedSearchQuery, setDebouncedSearchQuery] = useState("");
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>("ALL");
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -142,9 +145,25 @@ export default function DashboardPage() {
     }
   };
 
-  const filteredDocuments = documents.filter((doc) =>
-    doc.name.toLowerCase().includes(debouncedSearchQuery.toLowerCase())
-  );
+  const statusCounts = {
+    ALL: documents.length,
+    READY: documents.filter((d) => d.status === "READY").length,
+    PROCESSING: documents.filter((d) => d.status === "PROCESSING" || d.status === "QUEUED").length,
+    FAILED: documents.filter((d) => d.status === "FAILED").length,
+  };
+
+  const filteredDocuments = documents.filter((doc) => {
+    const matchesSearch = !debouncedSearchQuery || doc.name.toLowerCase().includes(debouncedSearchQuery.toLowerCase());
+    let matchesStatus = true;
+    if (statusFilter === "READY") {
+      matchesStatus = doc.status === "READY";
+    } else if (statusFilter === "PROCESSING") {
+      matchesStatus = doc.status === "PROCESSING" || doc.status === "QUEUED";
+    } else if (statusFilter === "FAILED") {
+      matchesStatus = doc.status === "FAILED";
+    }
+    return matchesSearch && matchesStatus;
+  });
 
   const formatFileSize = (bytes: number) => {
     if (typeof bytes !== "number" || isNaN(bytes) || bytes === 0) return "0 KB";
@@ -290,18 +309,56 @@ export default function DashboardPage() {
             animate={{ opacity: 1 }}
             transition={{ delay: 0.2 }}
           >
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+            {/* Header: Title & Total Badge */}
+            <div className="flex items-center justify-between gap-4 mb-4">
               <div className="flex items-center gap-3">
                 <h2 className="text-xl font-bold">Recent Documents</h2>
-                {debouncedSearchQuery && (
-                  <span className="text-xs px-2.5 py-1 rounded-full bg-brand-500/10 text-brand-400 border border-brand-500/20 font-medium">
-                    {filteredDocuments.length} {filteredDocuments.length === 1 ? "match" : "matches"}
-                  </span>
-                )}
+                <span className="text-xs px-2.5 py-1 rounded-full bg-brand-500/10 text-brand-400 border border-brand-500/20 font-medium">
+                  {filteredDocuments.length} {filteredDocuments.length === 1 ? "document" : "documents"}
+                </span>
+              </div>
+            </div>
+
+            {/* Controls Bar: Status Filter Tabs & Real-Time Search */}
+            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 mb-6">
+              {/* Status Filter Pill Tabs */}
+              <div className="flex items-center gap-1.5 p-1 bg-white/5 border border-white/10 rounded-2xl overflow-x-auto no-scrollbar">
+                {([
+                  { id: "ALL", label: "All", count: statusCounts.ALL, dotColor: "bg-brand-400" },
+                  { id: "READY", label: "Ready", count: statusCounts.READY, dotColor: "bg-emerald-400" },
+                  { id: "PROCESSING", label: "Processing", count: statusCounts.PROCESSING, dotColor: "bg-amber-400" },
+                  { id: "FAILED", label: "Failed", count: statusCounts.FAILED, dotColor: "bg-rose-400" },
+                ] as const).map((tab) => {
+                  const isActive = statusFilter === tab.id;
+                  return (
+                    <button
+                      key={tab.id}
+                      type="button"
+                      onClick={() => setStatusFilter(tab.id)}
+                      className={`flex items-center gap-2 px-3.5 py-1.5 rounded-xl text-xs font-semibold transition-all shrink-0 ${
+                        isActive
+                          ? "bg-brand-600 text-white shadow-md shadow-brand-600/20"
+                          : "text-gray-400 hover:text-white hover:bg-white/5"
+                      }`}
+                    >
+                      <span className={`w-2 h-2 rounded-full ${tab.dotColor} ${tab.id === "PROCESSING" && tab.count > 0 ? "animate-pulse" : ""}`} />
+                      <span>{tab.label}</span>
+                      <span
+                        className={`px-1.5 py-0.5 rounded-md text-[10px] font-bold ${
+                          isActive
+                            ? "bg-white/20 text-white"
+                            : "bg-white/5 text-gray-400"
+                        }`}
+                      >
+                        {tab.count}
+                      </span>
+                    </button>
+                  );
+                })}
               </div>
 
               {/* Real-Time Search Bar */}
-              <div className="relative w-full sm:w-72">
+              <div className="relative w-full lg:w-72">
                 <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
                 <input
                   type="text"
@@ -323,7 +380,7 @@ export default function DashboardPage() {
               </div>
             </div>
 
-            {/* Document Grid or Empty State */}
+            {/* Document Grid or Contextual Empty State */}
             {filteredDocuments.length > 0 ? (
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
                 {filteredDocuments.map((doc) => (
@@ -372,8 +429,35 @@ export default function DashboardPage() {
                   </div>
                 ))}
               </div>
+            ) : debouncedSearchQuery && statusFilter !== "ALL" ? (
+              /* Empty State: Search + Status Filter */
+              <div className="glass p-12 rounded-2xl border border-white/10 text-center flex flex-col items-center justify-center">
+                <div className="w-14 h-14 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center text-gray-400 mb-4">
+                  <Search className="w-7 h-7 text-gray-400" />
+                </div>
+                <h3 className="text-lg font-bold text-white mb-1">No matching documents</h3>
+                <p className="text-sm text-gray-400 max-w-sm mb-6">
+                  No documents found matching &ldquo;<span className="text-brand-300 font-medium">{debouncedSearchQuery}</span>&rdquo; with status <span className="text-white font-medium">{statusFilter}</span>.
+                </p>
+                <div className="flex flex-wrap items-center justify-center gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setSearchQuery("")}
+                    className="px-4 py-2 bg-white/10 hover:bg-white/20 text-white rounded-xl text-sm font-medium transition-all"
+                  >
+                    Clear Search
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setStatusFilter("ALL")}
+                    className="px-4 py-2 bg-brand-600 hover:bg-brand-500 text-white rounded-xl text-sm font-medium transition-all"
+                  >
+                    Show All Statuses
+                  </button>
+                </div>
+              </div>
             ) : debouncedSearchQuery ? (
-              /* Empty Search Result State */
+              /* Empty State: Search Only */
               <div className="glass p-12 rounded-2xl border border-white/10 text-center flex flex-col items-center justify-center">
                 <div className="w-14 h-14 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center text-gray-400 mb-4">
                   <Search className="w-7 h-7 text-gray-400" />
@@ -383,14 +467,35 @@ export default function DashboardPage() {
                   No documents matched &ldquo;<span className="text-brand-300 font-medium">{debouncedSearchQuery}</span>&rdquo;. Check your spelling or try another keyword.
                 </p>
                 <button
+                  type="button"
                   onClick={() => setSearchQuery("")}
                   className="px-4 py-2 bg-brand-600 hover:bg-brand-500 text-white rounded-xl text-sm font-medium transition-all"
                 >
                   Clear Search
                 </button>
               </div>
+            ) : statusFilter !== "ALL" ? (
+              /* Empty State: Status Filter Only */
+              <div className="glass p-12 rounded-2xl border border-white/10 text-center flex flex-col items-center justify-center">
+                <div className="w-14 h-14 rounded-2xl bg-brand-500/10 text-brand-400 flex items-center justify-center mb-4">
+                  <Filter className="w-7 h-7" />
+                </div>
+                <h3 className="text-lg font-bold text-white mb-1">
+                  No {statusFilter.toLowerCase()} documents
+                </h3>
+                <p className="text-sm text-gray-400 max-w-sm mb-6">
+                  You do not have any documents with status <span className="text-white font-medium">{statusFilter}</span> right now.
+                </p>
+                <button
+                  type="button"
+                  onClick={() => setStatusFilter("ALL")}
+                  className="px-4 py-2 bg-brand-600 hover:bg-brand-500 text-white rounded-xl text-sm font-medium transition-all"
+                >
+                  Show All Documents
+                </button>
+              </div>
             ) : (
-              /* Empty Document List State */
+              /* Empty State: No Documents Uploaded */
               <div className="glass p-12 rounded-2xl border border-white/10 text-center flex flex-col items-center justify-center">
                 <div className="w-14 h-14 rounded-2xl bg-brand-500/10 text-brand-400 flex items-center justify-center mb-4">
                   <FileText className="w-7 h-7" />

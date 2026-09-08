@@ -95,6 +95,89 @@ class TestDocuments:
         assert res_empty.status_code == status.HTTP_200_OK
         assert len(res_empty.data['data']) == 3
 
+    def test_filter_documents_by_status(self, authenticated_client):
+        user = authenticated_client.user
+        Document.objects.create(
+            user=user,
+            name='doc_ready_1.pdf',
+            storage_key='k_r1',
+            mime_type='application/pdf',
+            size=1024,
+            status=Document.StatusChoices.READY
+        )
+        Document.objects.create(
+            user=user,
+            name='doc_ready_2.pdf',
+            storage_key='k_r2',
+            mime_type='application/pdf',
+            size=1024,
+            status=Document.StatusChoices.READY
+        )
+        Document.objects.create(
+            user=user,
+            name='doc_queued.pdf',
+            storage_key='k_q',
+            mime_type='application/pdf',
+            size=1024,
+            status=Document.StatusChoices.QUEUED
+        )
+        Document.objects.create(
+            user=user,
+            name='doc_processing.pdf',
+            storage_key='k_p',
+            mime_type='application/pdf',
+            size=1024,
+            status=Document.StatusChoices.PROCESSING
+        )
+        Document.objects.create(
+            user=user,
+            name='doc_failed.pdf',
+            storage_key='k_f',
+            mime_type='application/pdf',
+            size=1024,
+            status=Document.StatusChoices.FAILED
+        )
+
+        # 1. Filter READY
+        res = authenticated_client.get('/api/v1/documents/?status=READY')
+        assert res.status_code == status.HTTP_200_OK
+        assert len(res.data['data']) == 2
+        assert all(d['status'] == 'READY' for d in res.data['data'])
+
+        # 2. Filter PROCESSING (should include both QUEUED and PROCESSING)
+        res_proc = authenticated_client.get('/api/v1/documents/?status=PROCESSING')
+        assert res_proc.status_code == status.HTTP_200_OK
+        assert len(res_proc.data['data']) == 2
+        statuses = [d['status'] for d in res_proc.data['data']]
+        assert 'QUEUED' in statuses and 'PROCESSING' in statuses
+
+        # 3. Filter FAILED
+        res_fail = authenticated_client.get('/api/v1/documents/?status=FAILED')
+        assert res_fail.status_code == status.HTTP_200_OK
+        assert len(res_fail.data['data']) == 1
+        assert res_fail.data['data'][0]['name'] == 'doc_failed.pdf'
+
+        # 4. Case-insensitive and whitespace handling (?status=  ready  )
+        res_ci = authenticated_client.get('/api/v1/documents/?status=  ready  ')
+        assert res_ci.status_code == status.HTTP_200_OK
+        assert len(res_ci.data['data']) == 2
+
+        # 5. Combined search and status filter (?status=READY&search=ready_1)
+        res_combo = authenticated_client.get('/api/v1/documents/?status=READY&search=ready_1')
+        assert res_combo.status_code == status.HTTP_200_OK
+        assert len(res_combo.data['data']) == 1
+        assert res_combo.data['data'][0]['name'] == 'doc_ready_1.pdf'
+
+        # 6. Combined filter with no match (?status=FAILED&search=ready)
+        res_no_match = authenticated_client.get('/api/v1/documents/?status=FAILED&search=ready')
+        assert res_no_match.status_code == status.HTTP_200_OK
+        assert len(res_no_match.data['data']) == 0
+
+        # 7. No status / empty status returns all 5
+        res_all = authenticated_client.get('/api/v1/documents/')
+        assert res_all.status_code == status.HTTP_200_OK
+        assert len(res_all.data['data']) == 5
+
     def test_upload_invalid_mime_type(self, authenticated_client):
         from io import BytesIO
         from django.core.files.uploadedfile import SimpleUploadedFile
