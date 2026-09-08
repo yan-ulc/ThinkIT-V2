@@ -21,6 +21,14 @@ class DocumentViewSet(viewsets.ModelViewSet):
         search = self.request.query_params.get('search')
         if search:
             queryset = queryset.filter(name__icontains=search.strip())
+        
+        status_param = self.request.query_params.get('status')
+        if status_param:
+            status_param = status_param.upper().strip()
+            if status_param == 'PROCESSING':
+                queryset = queryset.filter(status__in=[Document.StatusChoices.QUEUED, Document.StatusChoices.PROCESSING])
+            elif status_param in Document.StatusChoices.values:
+                queryset = queryset.filter(status=status_param)
         return queryset
 
     @action(detail=False, methods=['post'], parser_classes=[MultiPartParser, FormParser])
