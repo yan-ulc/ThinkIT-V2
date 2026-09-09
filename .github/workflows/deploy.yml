@@ -1,4 +1,4 @@
-﻿name: CI/CD Pipeline
+name: CI/CD Pipeline
 
 on:
   push:
@@ -287,7 +287,9 @@ jobs:
         run: docker build --build-arg NEXT_PUBLIC_API_URL=http://localhost:8000/api/v1 -t thinkit-web:test ./apps/web
 
       - name: Validate Docker Compose Configuration
-        run: docker compose -f docker-compose.prod.yml config
+        run: |
+          cp ./apps/api/.env.example ./apps/api/.env
+          docker compose -f docker-compose.prod.yml config
 
   deploy:
     name: Deploy to EC2
