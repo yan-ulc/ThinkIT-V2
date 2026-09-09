@@ -120,3 +120,8 @@ GROQ_API_KEY = env('GROQ_API_KEY', default='')
 GOOGLE_API_KEY = env('GOOGLE_API_KEY', default='')
 GEMINI_API_KEY = env('GEMINI_API_KEY', default='')
 
+# Google OAuth Configuration
+GOOGLE_CLIENT_ID = env('GOOGLE_CLIENT_ID', default='')
+GOOGLE_CLIENT_SECRET = env('GOOGLE_CLIENT_SECRET', default='')
+
+

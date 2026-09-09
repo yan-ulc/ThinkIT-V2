@@ -1,4 +1,4 @@
-name: CI/CD Pipeline
+﻿name: CI/CD Pipeline
 
 on:
   push:
@@ -7,10 +7,11 @@ on:
   pull_request:
     branches:
       - main
+  workflow_dispatch:
 
 jobs:
-  ci-frontend:
-    name: Frontend CI (Lint & Build)
+  quality-frontend:
+    name: Frontend Quality (Lint & Build)
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -18,31 +19,34 @@ jobs:
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
-      
+
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: '20'
-          
+
       - name: Install pnpm
         uses: pnpm/action-setup@v3
         with:
           version: 9
-          
+
       - name: Remove local workspace config
         run: rm -f pnpm-workspace.yaml
-          
+
       - name: Install Dependencies
         run: pnpm install --no-frozen-lockfile
-        
+
       - name: Lint Code
         run: pnpm lint
-        
+
       - name: Typecheck & Build
         run: pnpm build
+        env:
+          NEXT_PUBLIC_API_URL: http://localhost:8000/api/v1
+          NEXT_PUBLIC_GOOGLE_CLIENT_ID: 418294977493-qjq445troi3dbfpptevt6kjrbl0pdud0.apps.googleusercontent.com
 
-  ci-backend:
-    name: Backend CI (Checks)
+  database-foundation:
+    name: Database Foundation & Migrations Check
     runs-on: ubuntu-latest
     services:
       postgres:
@@ -73,18 +77,18 @@ jobs:
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
-        
+
       - name: Setup Python
         uses: actions/setup-python@v5
         with:
           python-version: '3.12'
-          
+
       - name: Install uv
         uses: astral-sh/setup-uv@v3
-        
+
       - name: Install Dependencies
         run: uv sync
-        
+
       - name: Django System Check
         run: uv run manage.py check
         env:
@@ -92,18 +96,208 @@ jobs:
           REDIS_URL: redis://localhost:6379/0
           GOOGLE_API_KEY: dummy_key_for_ci_check
           GROQ_API_KEY: dummy_key_for_ci_check
-          
-      - name: Run Pytest
-        run: uv run pytest
+          GOOGLE_CLIENT_ID: dummy_google_client_id
+
+      - name: Check Missing Migrations (Drift Detection)
+        run: uv run manage.py makemigrations --check --dry-run
+        env:
+          DATABASE_URL: postgres://postgres:postgrespassword@localhost:5432/thinkit
+          REDIS_URL: redis://localhost:6379/0
+          GOOGLE_API_KEY: dummy_key_for_ci_check
+          GROQ_API_KEY: dummy_key_for_ci_check
+          GOOGLE_CLIENT_ID: dummy_google_client_id
+
+      - name: Test Migration Execution on Real Postgres
+        run: uv run manage.py migrate
+        env:
+          DATABASE_URL: postgres://postgres:postgrespassword@localhost:5432/thinkit
+          REDIS_URL: redis://localhost:6379/0
+          GOOGLE_API_KEY: dummy_key_for_ci_check
+          GROQ_API_KEY: dummy_key_for_ci_check
+          GOOGLE_CLIENT_ID: dummy_google_client_id
+
+  backend-test-accounts:
+    name: Backend Tests - Accounts & Auth
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: pgvector/pgvector:pg16
+        env:
+          POSTGRES_DB: thinkit
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgrespassword
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    defaults:
+      run:
+        working-directory: ./apps/api
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v3
+
+      - name: Install Dependencies
+        run: uv sync
+
+      - name: Run Pytest Accounts
+        run: uv run pytest apps/accounts/tests.py -v
+        env:
+          DATABASE_URL: postgres://postgres:postgrespassword@localhost:5432/thinkit
+          REDIS_URL: redis://localhost:6379/0
+          GOOGLE_API_KEY: dummy_key_for_test
+          GROQ_API_KEY: dummy_key_for_test
+          GOOGLE_CLIENT_ID: 418294977493-qjq445troi3dbfpptevt6kjrbl0pdud0.apps.googleusercontent.com
+
+  backend-test-documents-quiz:
+    name: Backend Tests - Documents & Quiz
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: pgvector/pgvector:pg16
+        env:
+          POSTGRES_DB: thinkit
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgrespassword
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    defaults:
+      run:
+        working-directory: ./apps/api
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v3
+
+      - name: Install Dependencies
+        run: uv sync
+
+      - name: Run Pytest Documents & Quiz
+        run: uv run pytest apps/documents/tests.py apps/documents/tests_quiz.py -v
         env:
           DATABASE_URL: postgres://postgres:postgrespassword@localhost:5432/thinkit
           REDIS_URL: redis://localhost:6379/0
           GOOGLE_API_KEY: dummy_key_for_test
           GROQ_API_KEY: dummy_key_for_test
 
+  backend-test-chat:
+    name: Backend Tests - Chat & RAG
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: pgvector/pgvector:pg16
+        env:
+          POSTGRES_DB: thinkit
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgrespassword
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    defaults:
+      run:
+        working-directory: ./apps/api
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v3
+
+      - name: Install Dependencies
+        run: uv sync
+
+      - name: Run Pytest Chat
+        run: uv run pytest apps/chat/tests.py -v
+        env:
+          DATABASE_URL: postgres://postgres:postgrespassword@localhost:5432/thinkit
+          REDIS_URL: redis://localhost:6379/0
+          GOOGLE_API_KEY: dummy_key_for_test
+          GROQ_API_KEY: dummy_key_for_test
+
+  docker-images:
+    name: Docker Images Build & Smoke Verification
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Build API Docker Image
+        run: docker build -t thinkit-api:test ./apps/api
+
+      - name: Build Web Docker Image
+        run: docker build --build-arg NEXT_PUBLIC_API_URL=http://localhost:8000/api/v1 -t thinkit-web:test ./apps/web
+
+      - name: Validate Docker Compose Configuration
+        run: docker compose -f docker-compose.prod.yml config
+
   deploy:
     name: Deploy to EC2
-    needs: [ci-frontend, ci-backend]
+    needs:
+      - quality-frontend
+      - database-foundation
+      - backend-test-accounts
+      - backend-test-documents-quiz
+      - backend-test-chat
+      - docker-images
     runs-on: ubuntu-latest
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     steps:

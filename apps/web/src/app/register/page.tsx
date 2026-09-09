@@ -7,6 +7,7 @@ import { ArrowRight, Brain, Loader2 } from "lucide-react";
 import { motion } from "framer-motion";
 
 import { fetchApi } from "@/lib/api";
+import GoogleSignInButton from "@/components/auth/GoogleSignInButton";
 
 export default function RegisterPage() {
   const router = useRouter();
@@ -111,6 +112,17 @@ export default function RegisterPage() {
               {!isLoading && <ArrowRight className="w-5 h-5" />}
             </button>
           </form>
+
+          <div className="relative my-6">
+            <div className="absolute inset-0 flex items-center">
+              <div className="w-full border-t border-white/10" />
+            </div>
+            <div className="relative flex justify-center text-xs uppercase">
+              <span className="bg-[#121218] px-3 text-gray-400 font-medium tracking-wider">Or continue with</span>
+            </div>
+          </div>
+
+          <GoogleSignInButton mode="signup" onError={setErrorMsg} />
 
           <p className="text-center text-sm text-gray-400 mt-6">
             Already have an account?{" "}
