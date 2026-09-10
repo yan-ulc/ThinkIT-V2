@@ -13,7 +13,7 @@ interface Document {
   id: string;
   name: string;
   size: number;
-  status: "QUEUED" | "PROCESSING" | "READY" | "FAILED";
+  status: "UPLOADING" | "QUEUED" | "PROCESSING" | "READY" | "FAILED";
   created_at: string;
 }
 
@@ -27,6 +27,7 @@ interface DocumentAnalytics {
 export default function DashboardPage() {
   const router = useRouter();
   const [documents, setDocuments] = useState<Document[]>([]);
+  const [isLoadingDocuments, setIsLoadingDocuments] = useState(true);
   const [analytics, setAnalytics] = useState<DocumentAnalytics | null>(null);
   const [isLoadingAnalytics, setIsLoadingAnalytics] = useState(true);
   const [isUploading, setIsUploading] = useState(false);
@@ -55,17 +56,35 @@ export default function DashboardPage() {
     }
   }, []);
 
+  const fetchDocuments = useCallback(async () => {
+    try {
+      const res = await fetchApi("/documents/");
+      if (res) {
+        const docsList = Array.isArray(res.data) ? res.data : (Array.isArray(res) ? res : []);
+        setDocuments(docsList);
+      }
+    } catch (err) {
+      console.error("Failed to fetch documents", err);
+    } finally {
+      setIsLoadingDocuments(false);
+    }
+  }, []);
+
   useEffect(() => {
+    const token = localStorage.getItem("access_token");
+    if (!token) {
+      router.push("/login");
+      return;
+    }
+
     const abortController = new AbortController();
 
     const streamDocuments = async () => {
-      const token = localStorage.getItem("access_token");
-      if (!token) return router.push("/login");
-
+      // Immediately fetch initial document list and analytics via REST
+      await fetchDocuments();
       await fetchAnalytics();
 
       try {
-        // SSE requires importing API_URL, let's just use fetchApi as a base or write raw fetch
         const response = await fetch(`${API_URL}/documents/stream/`, {
           headers: { 'Authorization': `Bearer ${token}` },
           signal: abortController.signal
@@ -95,7 +114,10 @@ export default function DashboardPage() {
             if (line.startsWith('data: ')) {
               try {
                 const data = JSON.parse(line.slice(6));
-                setDocuments(data);
+                if (Array.isArray(data)) {
+                  setDocuments(data);
+                  setIsLoadingDocuments(false);
+                }
                 fetchAnalytics();
               } catch {}
             }
@@ -109,7 +131,7 @@ export default function DashboardPage() {
     streamDocuments();
 
     return () => abortController.abort();
-  }, [router, fetchAnalytics]);
+  }, [router, fetchDocuments, fetchAnalytics]);
 
   const handleLogout = async () => {
     try {
@@ -134,8 +156,9 @@ export default function DashboardPage() {
         method: "POST",
         body: formData,
       });
+      await fetchDocuments();
       fetchAnalytics();
-      // SSE will auto-update the list!
+      // SSE will also auto-update when Celery completes!
     } catch (err) {
       console.error("Upload failed", err);
       alert("Failed to upload document");
@@ -145,10 +168,13 @@ export default function DashboardPage() {
     }
   };
 
+  const isProcessingStatus = (status: string) =>
+    status === "PROCESSING" || status === "QUEUED" || status === "UPLOADING";
+
   const statusCounts = {
     ALL: documents.length,
     READY: documents.filter((d) => d.status === "READY").length,
-    PROCESSING: documents.filter((d) => d.status === "PROCESSING" || d.status === "QUEUED").length,
+    PROCESSING: documents.filter((d) => isProcessingStatus(d.status)).length,
     FAILED: documents.filter((d) => d.status === "FAILED").length,
   };
 
@@ -158,7 +184,7 @@ export default function DashboardPage() {
     if (statusFilter === "READY") {
       matchesStatus = doc.status === "READY";
     } else if (statusFilter === "PROCESSING") {
-      matchesStatus = doc.status === "PROCESSING" || doc.status === "QUEUED";
+      matchesStatus = isProcessingStatus(doc.status);
     } else if (statusFilter === "FAILED") {
       matchesStatus = doc.status === "FAILED";
     }
@@ -385,7 +411,24 @@ export default function DashboardPage() {
             </div>
 
             {/* Document Grid or Contextual Empty State */}
-            {filteredDocuments.length > 0 ? (
+            {isLoadingDocuments ? (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                {[1, 2, 3].map((i) => (
+                  <div key={i} className="glass p-5 rounded-2xl flex flex-col border border-white/10 animate-pulse">
+                    <div className="flex justify-between items-start mb-4">
+                      <div className="w-12 h-12 rounded-xl bg-white/5" />
+                      <div className="w-16 h-6 rounded-full bg-white/5" />
+                    </div>
+                    <div className="h-5 bg-white/10 rounded w-3/4 mb-2" />
+                    <div className="h-4 bg-white/5 rounded w-1/4 mb-6" />
+                    <div className="mt-auto flex items-center gap-2">
+                      <div className="flex-1 h-9 rounded-xl bg-white/5" />
+                      <div className="flex-1 h-9 rounded-xl bg-white/5" />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : filteredDocuments.length > 0 ? (
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
                 {filteredDocuments.map((doc) => (
                   <div key={doc.id} className="glass p-5 rounded-2xl flex flex-col border border-white/10 hover:border-brand-500/50 transition-colors group">
@@ -398,7 +441,9 @@ export default function DashboardPage() {
                       ) : doc.status === "FAILED" ? (
                         <span className="px-2 py-1 bg-red-500/10 text-red-400 text-xs font-semibold rounded-full border border-red-500/20">FAILED</span>
                       ) : (
-                        <span className="px-2 py-1 bg-yellow-500/10 text-yellow-400 text-xs font-semibold rounded-full border border-yellow-500/20 animate-pulse">PROCESSING</span>
+                        <span className="px-2 py-1 bg-yellow-500/10 text-yellow-400 text-xs font-semibold rounded-full border border-yellow-500/20 animate-pulse">
+                          {doc.status === "UPLOADING" ? "UPLOADING" : doc.status === "QUEUED" ? "QUEUED" : "PROCESSING"}
+                        </span>
                       )}
                     </div>
                     

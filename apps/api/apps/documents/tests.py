@@ -372,3 +372,14 @@ class TestDocuments:
         assert 'url' in response.data['data']
         assert 'https://storage.thinkit.ai/' in response.data['data']['url']
 
+    def test_stream_documents_unbuffered_headers(self, authenticated_client):
+        response = authenticated_client.get('/api/v1/documents/stream/')
+        assert response.status_code == status.HTTP_200_OK
+        assert response['Content-Type'] == 'text/event-stream'
+        assert response['Cache-Control'] == 'no-cache'
+        assert response['X-Accel-Buffering'] == 'no'
+
+    def test_stream_documents_unauthenticated(self, api_client):
+        response = api_client.get('/api/v1/documents/stream/')
+        assert response.status_code == status.HTTP_401_UNAUTHORIZED
+
