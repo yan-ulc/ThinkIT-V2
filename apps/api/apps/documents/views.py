@@ -127,7 +127,10 @@ class DocumentViewSet(viewsets.ModelViewSet):
             finally:
                 pubsub.close()
 
-        return StreamingHttpResponse(event_stream(), content_type='text/event-stream')
+        response = StreamingHttpResponse(event_stream(), content_type='text/event-stream')
+        response['Cache-Control'] = 'no-cache'
+        response['X-Accel-Buffering'] = 'no'
+        return response
 
     @action(detail=False, methods=['get'])
     def analytics(self, request):
