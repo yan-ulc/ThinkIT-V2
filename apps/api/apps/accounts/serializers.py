@@ -27,3 +27,17 @@ class RegisterSerializer(serializers.ModelSerializer):
 class LoginSerializer(serializers.Serializer):
     email = serializers.EmailField()
     password = serializers.CharField(write_only=True)
+
+
+class GoogleAuthSerializer(serializers.Serializer):
+    credential = serializers.CharField(required=False, allow_blank=False)
+    id_token = serializers.CharField(required=False, allow_blank=False)
+    token = serializers.CharField(required=False, allow_blank=False)
+
+    def validate(self, attrs):
+        token = attrs.get('credential') or attrs.get('id_token') or attrs.get('token')
+        if not token:
+            raise serializers.ValidationError({"credential": "A Google token or credential is required."})
+        attrs['credential'] = token
+        return attrs
+

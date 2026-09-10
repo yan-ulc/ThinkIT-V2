@@ -7,8 +7,8 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework.exceptions import Throttled, AuthenticationFailed
-from .serializers import UserSerializer, RegisterSerializer, LoginSerializer
-from .services import generate_auth_tokens, verify_refresh_token, revoke_refresh_token
+from .serializers import UserSerializer, RegisterSerializer, LoginSerializer, GoogleAuthSerializer
+from .services import generate_auth_tokens, verify_refresh_token, revoke_refresh_token, verify_and_authenticate_google_user
 from .models import RefreshToken
 
 def get_client_ip(request):
@@ -94,6 +94,34 @@ class LoginView(APIView):
                 'access_token': access_token
             }
         })
+        set_auth_cookies(response, refresh_token_string)
+        return response
+
+class GoogleAuthView(APIView):
+    permission_classes = [AllowAny]
+
+    def post(self, request):
+        serializer = GoogleAuthSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        credential = serializer.validated_data['credential']
+        user_agent = request.META.get('HTTP_USER_AGENT')
+        ip_address = get_client_ip(request)
+
+        user, access_token, refresh_token_string = verify_and_authenticate_google_user(
+            credential=credential,
+            user_agent=user_agent,
+            ip_address=ip_address
+        )
+
+        response = Response({
+            'error': False,
+            'message': 'Google authentication successful',
+            'data': {
+                'user': UserSerializer(user).data,
+                'access_token': access_token
+            }
+        }, status=status.HTTP_200_OK)
         set_auth_cookies(response, refresh_token_string)
         return response
 

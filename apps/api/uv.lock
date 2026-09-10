@@ -177,6 +177,7 @@ dependencies = [
     { name = "django-redis" },
     { name = "djangorestframework" },
     { name = "drf-spectacular" },
+    { name = "google-auth" },
     { name = "langchain" },
     { name = "langchain-community" },
     { name = "langchain-google-genai" },
@@ -185,6 +186,7 @@ dependencies = [
     { name = "psycopg", extra = ["binary"] },
     { name = "pyjwt" },
     { name = "pypdf" },
+    { name = "requests" },
     { name = "ruff" },
 ]
 
@@ -206,6 +208,7 @@ requires-dist = [
     { name = "django-redis", specifier = ">=6.0.0" },
     { name = "djangorestframework", specifier = ">=3.17.2" },
     { name = "drf-spectacular", specifier = ">=0.30.0" },
+    { name = "google-auth", specifier = ">=2.29.0" },
     { name = "langchain", specifier = ">=1.3.18" },
     { name = "langchain-community", specifier = ">=0.4.2" },
     { name = "langchain-google-genai", specifier = ">=4.3.7" },
@@ -214,6 +217,7 @@ requires-dist = [
     { name = "psycopg", extras = ["binary"], specifier = ">=3.3.4" },
     { name = "pyjwt", specifier = ">=2.13.0" },
     { name = "pypdf", specifier = ">=6.16.2" },
+    { name = "requests", specifier = ">=2.31.0" },
     { name = "ruff", specifier = ">=0.16.5" },
 ]
 
