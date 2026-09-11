@@ -46,6 +46,7 @@ interface Quiz {
   created_at: string;
   updated_at: string;
   total_questions: number;
+  total_flashcards?: number;
   highest_score?: number | null;
   highest_percentage?: number | null;
   total_attempts?: number;
@@ -1344,7 +1345,7 @@ export default function QuizPage({ params }: PageProps) {
                               )}
                             </div>
                             <p className="text-xs text-gray-400">
-                              {dateFormatted} • {q.total_questions || 5} Soal & Flashcards
+                              {dateFormatted} • {q.total_questions ?? 0} Soal{q.total_flashcards !== undefined ? ` • ${q.total_flashcards} Flashcards` : ""}
                             </p>
                           </div>
 

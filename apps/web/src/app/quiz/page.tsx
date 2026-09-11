@@ -30,6 +30,7 @@ interface QuizItem {
   title: string;
   created_at: string;
   total_questions: number;
+  total_flashcards?: number;
   highest_score?: number | null;
   highest_percentage?: number | null;
   total_attempts?: number;
@@ -156,7 +157,7 @@ export default function QuizHubPage() {
 
   // Aggregate Stats
   const totalQuizzes = quizzes.length;
-  const totalQuestions = quizzes.reduce((acc, curr) => acc + (curr.total_questions || 5), 0);
+  const totalQuestions = quizzes.reduce((acc, curr) => acc + (curr.total_questions ?? 0), 0);
   const totalDocsCovered = new Set(quizzes.map(q => q.document)).size;
 
   return (
@@ -352,7 +353,7 @@ export default function QuizHubPage() {
                           <span className="truncate">{quiz.document_name || "Dokumen PDF"}</span>
                         </span>
                         <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-brand-500/15 text-brand-300 border border-brand-500/30">
-                          {quiz.total_questions || 10} Soal
+                          {quiz.total_questions ?? 0} Soal
                         </span>
                       </div>
 

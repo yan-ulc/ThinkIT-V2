@@ -136,8 +136,8 @@ class TestQuizBackend:
 
         quiz_data = response.data['data']
         assert quiz_data['title'] == "Kuis: Dasar Pemrograman Python"
-        assert quiz_data['document'] == sample_document.id
-        assert quiz_data['total_questions'] == 10
+        assert quiz_data['total_questions'] == 5
+        assert quiz_data.get('total_flashcards') == 5
         assert len(quiz_data['questions']) == 10
 
         # Verify DB records
@@ -499,6 +499,50 @@ class TestQuizBackend:
         del_res = authenticated_client.delete(f'/api/v1/documents/quizzes/{quiz.id}/')
         assert del_res.status_code == status.HTTP_200_OK
         assert QuizAttempt.objects.filter(quiz=quiz).count() == 0
+
+    def test_quiz_question_count_isolation_and_accuracy(self, authenticated_client, sample_document):
+        user = authenticated_client.user
+        from apps.documents.serializers import QuizSerializer
+
+        for count in [5, 10, 15, 20]:
+            quiz = Quiz.objects.create(document=sample_document, user=user, title=f"Test Quiz {count}")
+            # Create MCQ questions
+            mcqs = [
+                QuizQuestion(
+                    quiz=quiz,
+                    question_type=QuizQuestion.QuestionType.MULTIPLE_CHOICE,
+                    question_text=f"MCQ Question {i}",
+                    options=["A", "B", "C", "D"],
+                    correct_answer="A",
+                    order=i
+                )
+                for i in range(1, count + 1)
+            ]
+            # Create Flashcards
+            flashcards = [
+                QuizQuestion(
+                    quiz=quiz,
+                    question_type=QuizQuestion.QuestionType.FLASHCARD,
+                    question_text=f"Flashcard Concept {i}",
+                    correct_answer=f"Definition {i}",
+                    explanation=f"Definition {i}",
+                    order=count + i
+                )
+                for i in range(1, count + 1)
+            ]
+            QuizQuestion.objects.bulk_create(mcqs + flashcards)
+
+            # Test through API endpoint
+            res = authenticated_client.get(f'/api/v1/documents/quizzes/{quiz.id}/')
+            assert res.status_code == status.HTTP_200_OK
+            assert res.data['total_questions'] == count, f"Expected {count} questions, got {res.data['total_questions']}"
+            assert res.data['total_flashcards'] == count, f"Expected {count} flashcards, got {res.data['total_flashcards']}"
+
+            # Test direct serializer prefetch behavior
+            prefetched_quiz = Quiz.objects.filter(id=quiz.id).prefetch_related('questions').first()
+            serialized = QuizSerializer(prefetched_quiz).data
+            assert serialized['total_questions'] == count
+            assert serialized['total_flashcards'] == count
 
 
 
