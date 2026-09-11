@@ -45,6 +45,7 @@ class QuizSerializer(serializers.ModelSerializer):
     questions = QuizQuestionSerializer(many=True, read_only=True)
     document_name = serializers.CharField(source='document.name', read_only=True)
     total_questions = serializers.SerializerMethodField()
+    total_flashcards = serializers.SerializerMethodField()
     highest_score = serializers.SerializerMethodField()
     highest_percentage = serializers.SerializerMethodField()
     total_attempts = serializers.SerializerMethodField()
@@ -59,6 +60,7 @@ class QuizSerializer(serializers.ModelSerializer):
             'created_at',
             'updated_at',
             'total_questions',
+            'total_flashcards',
             'highest_score',
             'highest_percentage',
             'total_attempts',
@@ -67,7 +69,14 @@ class QuizSerializer(serializers.ModelSerializer):
         read_only_fields = fields
 
     def get_total_questions(self, obj):
-        return obj.questions.count()
+        if hasattr(obj, '_prefetched_objects_cache') and 'questions' in obj._prefetched_objects_cache:
+            return sum(1 for q in obj.questions.all() if q.question_type == QuizQuestion.QuestionType.MULTIPLE_CHOICE)
+        return obj.questions.filter(question_type=QuizQuestion.QuestionType.MULTIPLE_CHOICE).count()
+
+    def get_total_flashcards(self, obj):
+        if hasattr(obj, '_prefetched_objects_cache') and 'questions' in obj._prefetched_objects_cache:
+            return sum(1 for q in obj.questions.all() if q.question_type == QuizQuestion.QuestionType.FLASHCARD)
+        return obj.questions.filter(question_type=QuizQuestion.QuestionType.FLASHCARD).count()
 
     def get_highest_score(self, obj):
         request = self.context.get('request')
