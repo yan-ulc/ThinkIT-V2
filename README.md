@@ -3,6 +3,12 @@
 > Blueprint & Project Plan — "software production beneran", bukan tutorial CRUD.
 
 [![Live Demo](https://img.shields.io/badge/Live_Demo-Try_ThinkIT-7C3AED?style=for-the-badge&logo=rocket&logoColor=white)](https://thinkitv2.cubix.codes)
+[![Staging](https://img.shields.io/badge/Stage-Staging_(Active)-22C55E?style=for-the-badge)](https://thinkitv2.cubix.codes)
+[![Production](https://img.shields.io/badge/Stage-Production_(Pending_Infra)-F59E0B?style=for-the-badge)](https://github.com/yan-ulc/ThinkIT-V2/milestone/12)
+
+> **Catatan Deployment & Environment:**  
+> Seluruh update terbaru dari branch `main` otomatis diuji melalui CI/CD dan dideploy langsung ke **Staging** di [https://thinkitv2.cubix.codes](https://thinkitv2.cubix.codes).  
+> Stack **Production** (dengan server EC2 dan database terisolasi penuh) saat ini belum tersedia dan dijadwalkan pada **Sprint 12 / Milestone 12**.
 
 Dokumen ini adalah **single source of truth** untuk arsitektur, keputusan teknis, dan roadmap pengembangan ThinkIT: aplikasi personal di mana user upload dokumen sendiri, dokumen diproses AI di background, lalu user bisa chat dengan AI berdasarkan isi dokumennya sendiri (RAG). **Tidak ada fitur multi-user/workspace/grup** — murni per-akun individual, fokus untuk belajar system design end-to-end.
 

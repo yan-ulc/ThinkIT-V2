@@ -323,16 +323,15 @@ jobs:
     needs:
       - deploy-staging
     runs-on: ubuntu-latest
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/production'
     environment:
       name: production
       url: https://thinkitv2.cubix.codes
     steps:
-      - name: Production Deployment Gate (Locked / Pending)
+      - name: Deploy to Dedicated Production Stack
         run: |
           echo "=========================================================="
-          echo "PRODUCTION STAGE STATUS: LOCKED / PENDING (RED)"
-          echo "Environment Domain: https://thinkitv2.cubix.codes"
-          echo "Production deployment is currently held pending final sign-off."
+          echo "PRODUCTION STAGE STATUS: DEDICATED INFRASTRUCTURE PENDING"
+          echo "Dedicated production database and EC2 stack will be provisioned in Sprint 12."
+          echo "Current live updates are deployed to Staging (https://thinkitv2.cubix.codes)."
           echo "=========================================================="
-          exit 1
