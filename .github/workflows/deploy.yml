@@ -291,8 +291,8 @@ jobs:
           cp ./apps/api/.env.example ./apps/api/.env
           docker compose -f docker-compose.prod.yml config
 
-  deploy:
-    name: Deploy to EC2
+  deploy-staging:
+    name: Deploy to Staging
     needs:
       - quality-frontend
       - database-foundation
@@ -302,6 +302,9 @@ jobs:
       - docker-images
     runs-on: ubuntu-latest
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    environment:
+      name: staging
+      url: https://thinkitv2.cubix.codes
     steps:
       - name: Execute deployment via SSH
         uses: appleboy/ssh-action@v1.0.3
@@ -314,3 +317,22 @@ jobs:
             git pull origin main
             docker-compose -f docker-compose.prod.yml up -d --build
             docker image prune -f
+
+  deploy-production:
+    name: Deploy to Production
+    needs:
+      - deploy-staging
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    environment:
+      name: production
+      url: https://thinkitv2.cubix.codes
+    steps:
+      - name: Production Deployment Gate (Locked / Pending)
+        run: |
+          echo "=========================================================="
+          echo "PRODUCTION STAGE STATUS: LOCKED / PENDING (RED)"
+          echo "Environment Domain: https://thinkitv2.cubix.codes"
+          echo "Production deployment is currently held pending final sign-off."
+          echo "=========================================================="
+          exit 1
