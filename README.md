@@ -1226,9 +1226,15 @@ Tidak semua hal ditest — prioritas berdasarkan risiko dan value.
 - [ ] Fitur ekspor kuis & kartu belajar dalam format JSON/Markdown
 - [ ] Integrasi tombol navigasi kuis di Dashboard dan Chat room
 
-#### 🎯 Sprint 9 — Full UI Polish, Design System Consistency & Theme System
+#### 🎯 Sprint 9 — Full UI Polish, Design System Consistency & Multi-Theme System
 * **Milestone:** [Milestone 9: UI Polish & Design System Consistency](https://github.com/yan-ulc/ThinkIT-V2/milestone/9)
-* **Umbrella Tracking Issue:** [Issue #20 - [Sprint 9] Full UI Polish, Design System Consistency, and Theme System](https://github.com/yan-ulc/ThinkIT-V2/issues/20) *(Open)*
+
+* **Issue:** [Issue #20 - [Sprint 9] Implement Multi-Theme System, Palette Customization, and User Theme Selector](https://github.com/yan-ulc/ThinkIT-V2/issues/20) *(Open)*
+  - [ ] Arsitektur theme tokens CSS variables di `globals.css` dengan `[data-theme]` selectors
+  - [ ] 5 Presets tema estetik terkurasi (Midnight Obsidian, Cyber Emerald, Oceanic Abyss, Sunset Amber, Royal Amethyst)
+  - [ ] `ThemeProvider` Context & hook `useTheme()` dengan persistensi `localStorage`
+  - [ ] Skrip inline anti-FOUC di `layout.tsx` untuk mencegah kedipan tema saat reload
+  - [ ] Komponen `ThemeSelector` visual interaktif (color swatches & active checks) di Navbar dan `/profile`
 
 * **Issue:** [Issue #62 - [Sprint 9] Design System Standardization, Typography, and Reusable Glassmorphic UI Components](https://github.com/yan-ulc/ThinkIT-V2/issues/62) *(Open)*
   - [ ] Standardisasi CSS custom properties & HSL dark surface background palette di `globals.css`
