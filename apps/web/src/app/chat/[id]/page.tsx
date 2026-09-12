@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import { ArrowLeft, Bot, FileText, Send, User, PanelLeftClose, PanelLeftOpen, MessageSquare, BookOpen, ExternalLink, GraduationCap } from "lucide-react";
 import { motion } from "framer-motion";
@@ -46,6 +46,11 @@ export default function ChatPage() {
     { role: "assistant", content: "Hi there! I have read your document. What would you like to know about it?" }
   ]);
   const [isTyping, setIsTyping] = useState(false);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages, isTyping]);
 
   useEffect(() => {
     const fetchDoc = async () => {
@@ -374,6 +379,9 @@ export default function ChatPage() {
               </div>
             </motion.div>
           )}
+
+          {/* Auto-scroll anchor */}
+          <div ref={messagesEndRef} />
         </div>
 
         {/* Chat Input */}
@@ -385,12 +393,14 @@ export default function ChatPage() {
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
                 placeholder="Ask something about this document..."
-                className="flex-1 bg-transparent border-none focus:outline-none text-white px-4 py-3 placeholder:text-gray-500"
+                aria-label="Tulis pertanyaan seputar dokumen"
+                className="flex-1 bg-transparent border-none focus:outline-none text-white px-4 py-3 placeholder:text-gray-500 text-sm"
               />
               <button 
                 type="submit"
                 disabled={!input.trim() || isTyping}
-                className="w-12 h-12 rounded-full bg-brand-600 hover:bg-brand-500 text-white flex items-center justify-center shrink-0 disabled:opacity-50 disabled:hover:bg-brand-600 transition-all shadow-lg"
+                aria-label="Kirim pertanyaan"
+                className="w-12 h-12 rounded-full bg-brand-600 hover:bg-brand-500 text-white flex items-center justify-center shrink-0 disabled:opacity-50 disabled:hover:bg-brand-600 transition-all shadow-lg focus-ring touch-target cursor-pointer"
               >
                 <Send className="w-5 h-5 ml-1" />
               </button>

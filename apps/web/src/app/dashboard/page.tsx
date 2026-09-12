@@ -1,11 +1,28 @@
 "use client";
 
-import { useState, useEffect, useRef, useCallback } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Brain, FileText, LogOut, MessageSquare, Plus, UploadCloud, Loader2, HardDrive, Sparkles, Search, X, GraduationCap, Filter } from "lucide-react";
+import {
+  FileText,
+  MessageSquare,
+  Plus,
+  UploadCloud,
+  Loader2,
+  HardDrive,
+  Sparkles,
+  Search,
+  X,
+  GraduationCap,
+  Filter,
+} from "lucide-react";
 import { motion } from "framer-motion";
 import { fetchApi, API_URL } from "@/lib/api";
+import { AppSidebar } from "@/components/layout/AppSidebar";
+import { AppHeader } from "@/components/layout/AppHeader";
+import { Badge } from "@/components/ui/Badge";
+import { Button } from "@/components/ui/Button";
+import { staggerContainer, staggerItem } from "@/lib/animations";
 
 type StatusFilter = "ALL" | "READY" | "PROCESSING" | "FAILED";
 
@@ -31,6 +48,7 @@ export default function DashboardPage() {
   const [analytics, setAnalytics] = useState<DocumentAnalytics | null>(null);
   const [isLoadingAnalytics, setIsLoadingAnalytics] = useState(true);
   const [isUploading, setIsUploading] = useState(false);
+  const [isDragging, setIsDragging] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [debouncedSearchQuery, setDebouncedSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("ALL");
@@ -60,7 +78,7 @@ export default function DashboardPage() {
     try {
       const res = await fetchApi("/documents/");
       if (res) {
-        const docsList = Array.isArray(res.data) ? res.data : (Array.isArray(res) ? res : []);
+        const docsList = Array.isArray(res.data) ? res.data : Array.isArray(res) ? res : [];
         setDocuments(docsList);
       }
     } catch (err) {
@@ -80,16 +98,15 @@ export default function DashboardPage() {
     const abortController = new AbortController();
 
     const streamDocuments = async () => {
-      // Immediately fetch initial document list and analytics via REST
       await fetchDocuments();
       await fetchAnalytics();
 
       try {
         const response = await fetch(`${API_URL}/documents/stream/`, {
-          headers: { 'Authorization': `Bearer ${token}` },
-          signal: abortController.signal
+          headers: { Authorization: `Bearer ${token}` },
+          signal: abortController.signal,
         });
-        
+
         if (!response.ok) {
           if (response.status === 401) {
             localStorage.removeItem("access_token");
@@ -101,17 +118,17 @@ export default function DashboardPage() {
         const reader = response.body?.getReader();
         const decoder = new TextDecoder();
         let buffer = "";
-        
+
         while (reader) {
           const { done, value } = await reader.read();
           if (done) break;
-          
+
           buffer += decoder.decode(value, { stream: true });
-          const lines = buffer.split('\n');
-          buffer = lines.pop() || ""; // Keep the incomplete line in buffer
-          
+          const lines = buffer.split("\n");
+          buffer = lines.pop() || "";
+
           for (const line of lines) {
-            if (line.startsWith('data: ')) {
+            if (line.startsWith("data: ")) {
               try {
                 const data = JSON.parse(line.slice(6));
                 if (Array.isArray(data)) {
@@ -124,7 +141,7 @@ export default function DashboardPage() {
           }
         }
       } catch (err) {
-        if (err instanceof Error && err.name !== 'AbortError') console.error("Stream failed", err);
+        if (err instanceof Error && err.name !== "AbortError") console.error("Stream failed", err);
       }
     };
 
@@ -133,23 +150,16 @@ export default function DashboardPage() {
     return () => abortController.abort();
   }, [router, fetchDocuments, fetchAnalytics]);
 
-  const handleLogout = async () => {
-    try {
-      await fetchApi("/auth/logout", { method: "POST" });
-    } catch {}
-    localStorage.removeItem("access_token");
-    router.push("/");
-  };
-
-  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
+  const uploadFile = async (file: File) => {
+    if (!file.name.toLowerCase().endsWith(".pdf")) {
+      alert("Please upload a valid PDF document.");
+      return;
+    }
 
     setIsUploading(true);
     const formData = new FormData();
     formData.append("file", file);
     formData.append("name", file.name);
-    // Note: In real app, add Idempotency-Key header for this request
 
     try {
       await fetchApi("/documents/upload/", {
@@ -158,7 +168,6 @@ export default function DashboardPage() {
       });
       await fetchDocuments();
       fetchAnalytics();
-      // SSE will also auto-update when Celery completes!
     } catch (err) {
       console.error("Upload failed", err);
       alert("Failed to upload document");
@@ -166,6 +175,18 @@ export default function DashboardPage() {
       setIsUploading(false);
       if (fileInputRef.current) fileInputRef.current.value = "";
     }
+  };
+
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) await uploadFile(file);
+  };
+
+  const handleDrop = async (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    setIsDragging(false);
+    const file = e.dataTransfer.files?.[0];
+    if (file) await uploadFile(file);
   };
 
   const isProcessingStatus = (status: string) =>
@@ -179,7 +200,8 @@ export default function DashboardPage() {
   };
 
   const filteredDocuments = documents.filter((doc) => {
-    const matchesSearch = !debouncedSearchQuery || doc.name.toLowerCase().includes(debouncedSearchQuery.toLowerCase());
+    const matchesSearch =
+      !debouncedSearchQuery || doc.name.toLowerCase().includes(debouncedSearchQuery.toLowerCase());
     let matchesStatus = true;
     if (statusFilter === "READY") {
       matchesStatus = doc.status === "READY";
@@ -199,185 +221,196 @@ export default function DashboardPage() {
     return `${Math.round(bytes / 1024)} KB`;
   };
 
+  const renderStatusBadge = (status: Document["status"]) => {
+    switch (status) {
+      case "READY":
+        return <Badge variant="ready" dot>READY</Badge>;
+      case "FAILED":
+        return <Badge variant="failed" dot>FAILED</Badge>;
+      case "UPLOADING":
+        return <Badge variant="uploading" dot>UPLOADING</Badge>;
+      case "QUEUED":
+        return <Badge variant="queued" dot>QUEUED</Badge>;
+      case "PROCESSING":
+      default:
+        return <Badge variant="processing" dot>PROCESSING</Badge>;
+    }
+  };
+
   return (
-    <div className="flex h-screen overflow-hidden">
-      {/* Sidebar */}
-      <aside className="w-64 glass border-r border-white/5 flex flex-col hidden md:flex">
-        <div className="p-6 flex items-center gap-2">
-          <Brain className="w-6 h-6 text-brand-400" />
-          <span className="font-bold text-xl tracking-tight">ThinkIT</span>
-        </div>
+    <div className="flex h-screen overflow-hidden bg-background">
+      {/* Reusable Desktop Sidebar */}
+      <AppSidebar />
 
-        <nav className="flex-1 px-4 py-6 space-y-2">
-          <Link href="/dashboard" className="flex items-center gap-3 bg-brand-500/20 text-brand-300 px-4 py-3 rounded-xl transition-colors font-medium">
-            <FileText className="w-5 h-5" />
-            My Documents
-          </Link>
-          <Link href="/quiz" className="flex items-center gap-3 hover:bg-white/5 text-gray-400 hover:text-white px-4 py-3 rounded-xl transition-colors font-medium">
-            <GraduationCap className="w-5 h-5" />
-            Quiz & Flashcards
-          </Link>
-          <Link href="/profile" className="flex items-center gap-3 hover:bg-white/5 text-gray-400 hover:text-white px-4 py-3 rounded-xl transition-colors font-medium">
-            <Brain className="w-5 h-5" />
-            User Profile
-          </Link>
-        </nav>
-
-        <div className="p-4 mt-auto border-t border-white/5">
-          <button onClick={handleLogout} className="flex items-center gap-3 text-gray-400 hover:text-white px-4 py-3 w-full transition-colors">
-            <LogOut className="w-5 h-5" />
-            Sign Out
-          </button>
-        </div>
-      </aside>
-
-      {/* Main Content */}
+      {/* Main Content Area */}
       <main className="flex-1 flex flex-col overflow-y-auto relative z-10">
-        <header className="px-8 py-6 border-b border-white/5 flex items-center justify-between glass md:bg-transparent">
-          <h1 className="text-2xl font-bold">Documents</h1>
-          <button className="md:hidden flex items-center gap-2 bg-brand-600 hover:bg-brand-500 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors">
-            <Plus className="w-4 h-4" /> Upload
-          </button>
-        </header>
+        {/* Reusable Responsive App Header */}
+        <AppHeader
+          title="Documents"
+          subtitle="Upload and interact with your personal AI knowledge base"
+          actions={
+            <Button
+              size="sm"
+              onClick={() => fileInputRef.current?.click()}
+              leftIcon={<Plus className="w-4 h-4" />}
+            >
+              Upload PDF
+            </Button>
+          }
+        />
 
-        <div className="p-8 max-w-5xl mx-auto w-full flex-1">
+        <div className="p-5 md:p-8 max-w-6xl mx-auto w-full flex-1">
           {/* Document Analytics Summary Cards */}
-          <motion.div
-            initial={{ opacity: 0, y: -10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.3 }}
-            className="grid grid-cols-1 sm:grid-cols-3 gap-6 mb-8"
-          >
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-5 mb-8">
             {/* Total Documents Card */}
-            <div className="glass p-6 rounded-2xl border border-white/10 flex flex-col justify-between hover:border-brand-500/30 transition-all">
+            <div className="glass-card rounded-2xl p-5 border border-white/10 flex flex-col justify-between hover:border-brand-500/30 transition-all">
               <div className="flex items-center justify-between mb-3">
-                <span className="text-sm font-medium text-gray-400">Total Documents</span>
+                <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider">
+                  Total Documents
+                </span>
                 <div className="p-2.5 bg-brand-500/10 text-brand-400 rounded-xl">
                   <FileText className="w-5 h-5" />
                 </div>
               </div>
               <div>
-                <h3 className="text-2xl font-bold tracking-tight">
-                  {isLoadingAnalytics ? "..." : (analytics?.total_documents ?? documents.length)}
+                <h3 className="text-2xl font-bold tracking-tight text-white font-heading">
+                  {isLoadingAnalytics ? "..." : analytics?.total_documents ?? 0}
                 </h3>
-                <p className="text-xs text-gray-500 mt-1">
-                  Active files in personal workspace
-                </p>
+                <p className="text-xs text-gray-500 mt-1">Uploaded & parsed files</p>
               </div>
             </div>
 
             {/* Storage Used Card */}
-            <div className="glass p-6 rounded-2xl border border-white/10 flex flex-col justify-between hover:border-blue-500/30 transition-all">
+            <div className="glass-card rounded-2xl p-5 border border-white/10 flex flex-col justify-between hover:border-brand-500/30 transition-all">
               <div className="flex items-center justify-between mb-3">
-                <span className="text-sm font-medium text-gray-400">Storage Used</span>
-                <div className="p-2.5 bg-blue-500/10 text-blue-400 rounded-xl">
+                <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider">
+                  Storage Used
+                </span>
+                <div className="p-2.5 bg-purple-500/10 text-purple-400 rounded-xl">
                   <HardDrive className="w-5 h-5" />
                 </div>
               </div>
               <div>
-                <h3 className="text-2xl font-bold tracking-tight">
-                  {isLoadingAnalytics
-                    ? "..."
-                    : analytics
-                    ? analytics.storage_used_mb >= 1
-                      ? `${analytics.storage_used_mb} MB`
-                      : `${Math.round(analytics.total_storage_bytes / 1024)} KB`
-                    : "0 KB"}
+                <h3 className="text-2xl font-bold tracking-tight text-white font-heading">
+                  {isLoadingAnalytics ? "..." : `${analytics?.storage_used_mb ?? 0} MB`}
                 </h3>
-                <p className="text-xs text-gray-500 mt-1">Cloud document storage quota</p>
+                <p className="text-xs text-gray-500 mt-1">Cloud object storage capacity</p>
               </div>
             </div>
 
-            {/* AI Usage Card */}
-            <div className="glass p-6 rounded-2xl border border-white/10 flex flex-col justify-between hover:border-purple-500/30 transition-all">
+            {/* AI Queries Card */}
+            <div className="glass-card rounded-2xl p-5 border border-white/10 flex flex-col justify-between hover:border-brand-500/30 transition-all">
               <div className="flex items-center justify-between mb-3">
-                <span className="text-sm font-medium text-gray-400">AI Usage</span>
-                <div className="p-2.5 bg-purple-500/10 text-purple-400 rounded-xl">
+                <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider">
+                  AI Queries Used
+                </span>
+                <div className="p-2.5 bg-cyan-500/10 text-cyan-400 rounded-xl">
                   <Sparkles className="w-5 h-5" />
                 </div>
               </div>
               <div>
-                <h3 className="text-2xl font-bold tracking-tight">
+                <h3 className="text-2xl font-bold tracking-tight text-white font-heading">
                   {isLoadingAnalytics ? "..." : `${analytics?.ai_queries_used ?? 0} Queries`}
                 </h3>
-                <p className="text-xs text-gray-500 mt-1">Total questions & chats asked</p>
+                <p className="text-xs text-gray-500 mt-1">Questions & chats answered</p>
               </div>
             </div>
-          </motion.div>
+          </div>
 
-          {/* Upload Area */}
-          <motion.div 
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            onClick={() => fileInputRef.current?.click()}
-            className="w-full glass-dark border border-dashed border-brand-500/50 rounded-3xl p-12 flex flex-col items-center justify-center text-center cursor-pointer hover:bg-white/[0.02] transition-colors mb-12"
-          >
-            <input 
-              type="file" 
-              ref={fileInputRef} 
-              onChange={handleFileChange} 
-              accept=".pdf" 
-              className="hidden" 
-            />
-            <div className="w-16 h-16 rounded-full bg-brand-500/20 flex items-center justify-center text-brand-400 mb-6">
-              {isUploading ? <Loader2 className="w-8 h-8 animate-spin" /> : <UploadCloud className="w-8 h-8" />}
-            </div>
-            <h3 className="text-xl font-bold mb-2">
-              {isUploading ? "Uploading..." : "Upload a Document"}
-            </h3>
-            <p className="text-gray-400 text-sm max-w-sm mb-6">
-              Drag and drop your PDF here, or click to browse. We&apos;ll read it and get it ready for chat.
-            </p>
-            <button className="bg-white/10 hover:bg-white/20 text-white px-6 py-3 rounded-xl font-semibold transition-all pointer-events-none">
-              Select PDF File
-            </button>
-          </motion.div>
-
-          {/* Document List Header & Search */}
+          {/* Interactive Drag-and-Drop Upload Area with Motion Feedback */}
           <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 0.2 }}
+            onClick={() => fileInputRef.current?.click()}
+            onDragOver={(e) => {
+              e.preventDefault();
+              setIsDragging(true);
+            }}
+            onDragLeave={() => setIsDragging(false)}
+            onDrop={handleDrop}
+            animate={{
+              scale: isDragging ? 1.01 : 1,
+              borderColor: isDragging ? "rgba(167, 139, 250, 0.9)" : "rgba(139, 92, 246, 0.4)",
+              backgroundColor: isDragging ? "rgba(139, 92, 246, 0.08)" : "rgba(15, 23, 42, 0.6)",
+            }}
+            transition={{ duration: 0.2 }}
+            className="w-full border-2 border-dashed rounded-3xl p-8 sm:p-12 flex flex-col items-center justify-center text-center cursor-pointer transition-colors mb-10 shadow-xl"
           >
+            <input
+              type="file"
+              ref={fileInputRef}
+              onChange={handleFileChange}
+              accept=".pdf"
+              className="hidden"
+            />
+            <div className="w-16 h-16 rounded-2xl bg-brand-500/20 border border-brand-500/30 flex items-center justify-center text-brand-400 mb-5 shadow-lg shadow-brand-500/20">
+              {isUploading ? (
+                <Loader2 className="w-8 h-8 animate-spin" />
+              ) : (
+                <UploadCloud className="w-8 h-8" />
+              )}
+            </div>
+            <h3 className="text-lg sm:text-xl font-bold mb-2 text-white font-heading">
+              {isUploading ? "Uploading & Processing..." : isDragging ? "Drop your PDF file here" : "Upload a PDF Document"}
+            </h3>
+            <p className="text-gray-400 text-xs sm:text-sm max-w-sm mb-6 leading-relaxed">
+              Drag and drop your PDF here, or click to browse files. We&apos;ll parse text chunks and generate embeddings for instant AI chat.
+            </p>
+            <Button
+              variant="glass"
+              size="md"
+              className="pointer-events-none"
+              isLoading={isUploading}
+            >
+              Select PDF File
+            </Button>
+          </motion.div>
+
+          {/* Document List Header, Filters, and Search */}
+          <div>
             {/* Header: Title & Total Badge */}
             <div className="flex items-center justify-between gap-4 mb-4">
               <div className="flex items-center gap-3">
-                <h2 className="text-xl font-bold">Recent Documents</h2>
-                <span className="text-xs px-2.5 py-1 rounded-full bg-brand-500/10 text-brand-400 border border-brand-500/20 font-medium">
+                <h2 className="text-lg md:text-xl font-bold text-white font-heading">
+                  Recent Documents
+                </h2>
+                <Badge variant="brand" size="sm">
                   {filteredDocuments.length} {filteredDocuments.length === 1 ? "document" : "documents"}
-                </span>
+                </Badge>
               </div>
             </div>
 
             {/* Controls Bar: Status Filter Tabs & Real-Time Search */}
             <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 mb-6">
               {/* Status Filter Pill Tabs */}
-              <div className="flex items-center gap-1.5 p-1 bg-white/5 border border-white/10 rounded-2xl overflow-x-auto no-scrollbar">
-                {([
-                  { id: "ALL", label: "All", count: statusCounts.ALL, dotColor: "bg-brand-400" },
-                  { id: "READY", label: "Ready", count: statusCounts.READY, dotColor: "bg-emerald-400" },
-                  { id: "PROCESSING", label: "Processing", count: statusCounts.PROCESSING, dotColor: "bg-amber-400" },
-                  { id: "FAILED", label: "Failed", count: statusCounts.FAILED, dotColor: "bg-rose-400" },
-                ] as const).map((tab) => {
+              <div className="flex items-center gap-1.5 p-1 bg-white/[0.03] border border-white/10 rounded-2xl overflow-x-auto no-scrollbar">
+                {(
+                  [
+                    { id: "ALL", label: "All", count: statusCounts.ALL, dotColor: "bg-brand-400" },
+                    { id: "READY", label: "Ready", count: statusCounts.READY, dotColor: "bg-emerald-400" },
+                    { id: "PROCESSING", label: "Processing", count: statusCounts.PROCESSING, dotColor: "bg-amber-400" },
+                    { id: "FAILED", label: "Failed", count: statusCounts.FAILED, dotColor: "bg-rose-400" },
+                  ] as const
+                ).map((tab) => {
                   const isActive = statusFilter === tab.id;
                   return (
                     <button
                       key={tab.id}
                       type="button"
                       onClick={() => setStatusFilter(tab.id)}
-                      className={`flex items-center gap-2 px-3.5 py-1.5 rounded-xl text-xs font-semibold transition-all shrink-0 ${
+                      className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-semibold transition-all shrink-0 focus-ring touch-target ${
                         isActive
                           ? "bg-brand-600 text-white shadow-md shadow-brand-600/20"
                           : "text-gray-400 hover:text-white hover:bg-white/5"
                       }`}
                     >
-                      <span className={`w-2 h-2 rounded-full ${tab.dotColor} ${tab.id === "PROCESSING" && tab.count > 0 ? "animate-pulse" : ""}`} />
+                      <span
+                        className={`w-2 h-2 rounded-full ${tab.dotColor} ${
+                          tab.id === "PROCESSING" && tab.count > 0 ? "animate-pulse" : ""
+                        }`}
+                      />
                       <span>{tab.label}</span>
                       <span
                         className={`px-1.5 py-0.5 rounded-md text-[10px] font-bold ${
-                          isActive
-                            ? "bg-white/20 text-white"
-                            : "bg-white/5 text-gray-400"
+                          isActive ? "bg-white/20 text-white" : "bg-white/5 text-gray-400"
                         }`}
                       >
                         {tab.count}
@@ -395,14 +428,15 @@ export default function DashboardPage() {
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   placeholder="Search documents by name..."
-                  className="w-full pl-10 pr-9 py-2 bg-white/5 border border-white/10 rounded-xl text-sm text-white placeholder-gray-500 focus:outline-none focus:border-brand-500/50 focus:ring-1 focus:ring-brand-500/50 transition-all"
+                  className="w-full pl-10 pr-9 py-2.5 bg-white/[0.04] border border-white/10 rounded-xl text-xs sm:text-sm text-white placeholder-gray-500 focus-ring transition-all"
+                  aria-label="Search documents by name"
                 />
                 {searchQuery && (
                   <button
                     type="button"
                     onClick={() => setSearchQuery("")}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-white p-0.5 rounded-full hover:bg-white/10 transition-colors"
-                    aria-label="Clear search"
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-white p-1 rounded-full hover:bg-white/10 transition-colors focus-ring"
+                    aria-label="Clear search query"
                   >
                     <X className="w-3.5 h-3.5" />
                   </button>
@@ -410,13 +444,16 @@ export default function DashboardPage() {
               </div>
             </div>
 
-            {/* Document Grid or Contextual Empty State */}
+            {/* Document Grid with Framer Motion Stagger */}
             {isLoadingDocuments ? (
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
                 {[1, 2, 3].map((i) => (
-                  <div key={i} className="glass p-5 rounded-2xl flex flex-col border border-white/10 animate-pulse">
+                  <div
+                    key={i}
+                    className="glass-card p-5 rounded-2xl flex flex-col border border-white/10 animate-pulse"
+                  >
                     <div className="flex justify-between items-start mb-4">
-                      <div className="w-12 h-12 rounded-xl bg-white/5" />
+                      <div className="w-11 h-11 rounded-xl bg-white/5" />
                       <div className="w-16 h-6 rounded-full bg-white/5" />
                     </div>
                     <div className="h-5 bg-white/10 rounded w-3/4 mb-2" />
@@ -429,133 +466,138 @@ export default function DashboardPage() {
                 ))}
               </div>
             ) : filteredDocuments.length > 0 ? (
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+              <motion.div
+                variants={staggerContainer}
+                initial="hidden"
+                animate="visible"
+                className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5"
+              >
                 {filteredDocuments.map((doc) => (
-                  <div key={doc.id} className="glass p-5 rounded-2xl flex flex-col border border-white/10 hover:border-brand-500/50 transition-colors group">
+                  <motion.div
+                    key={doc.id}
+                    variants={staggerItem}
+                    whileHover={{ y: -3 }}
+                    transition={{ duration: 0.2 }}
+                    className="glass-card glass-hover p-5 rounded-2xl flex flex-col border border-white/10 group"
+                  >
                     <div className="flex justify-between items-start mb-4">
-                      <div className="p-3 bg-brand-500/10 rounded-xl text-brand-400">
+                      <div className="p-3 bg-brand-500/10 text-brand-400 rounded-xl group-hover:bg-brand-500/20 transition-colors">
                         <FileText className="w-6 h-6" />
                       </div>
-                      {doc.status === "READY" ? (
-                        <span className="px-2 py-1 bg-green-500/10 text-green-400 text-xs font-semibold rounded-full border border-green-500/20">READY</span>
-                      ) : doc.status === "FAILED" ? (
-                        <span className="px-2 py-1 bg-red-500/10 text-red-400 text-xs font-semibold rounded-full border border-red-500/20">FAILED</span>
-                      ) : (
-                        <span className="px-2 py-1 bg-yellow-500/10 text-yellow-400 text-xs font-semibold rounded-full border border-yellow-500/20 animate-pulse">
-                          {doc.status === "UPLOADING" ? "UPLOADING" : doc.status === "QUEUED" ? "QUEUED" : "PROCESSING"}
-                        </span>
-                      )}
+                      {renderStatusBadge(doc.status)}
                     </div>
-                    
-                    <h4 className="font-semibold text-lg truncate mb-1" title={doc.name}>{doc.name}</h4>
-                    <p className="text-sm text-gray-500 mb-6">{formatFileSize(doc.size)}</p>
-                    
+
+                    <h4
+                      className="font-semibold text-base text-white truncate mb-1"
+                      title={doc.name}
+                    >
+                      {doc.name}
+                    </h4>
+                    <p className="text-xs text-gray-500 mb-6">{formatFileSize(doc.size)}</p>
+
                     <div className="mt-auto flex items-center gap-2">
-                      <Link 
+                      <Link
                         href={`/chat/${doc.id}`}
-                        className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl font-semibold text-xs sm:text-sm transition-all ${
-                          doc.status === "READY" 
-                            ? "bg-brand-600 hover:bg-brand-500 text-white shadow-md shadow-brand-600/20" 
+                        className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl font-semibold text-xs transition-all focus-ring touch-target ${
+                          doc.status === "READY"
+                            ? "bg-brand-600 hover:bg-brand-500 text-white shadow-md shadow-brand-600/20 active:scale-[0.98]"
                             : "bg-white/5 text-gray-500 pointer-events-none"
                         }`}
+                        aria-label={`Open AI Chat for ${doc.name}`}
                       >
-                        <MessageSquare className="w-4 h-4" />
+                        <MessageSquare className="w-3.5 h-3.5" />
                         <span>Chat</span>
                       </Link>
-                      <Link 
+                      <Link
                         href={`/quiz/${doc.id}`}
-                        className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl font-semibold text-xs sm:text-sm transition-all border border-purple-500/30 ${
-                          doc.status === "READY" 
-                            ? "bg-purple-500/10 hover:bg-purple-500/20 text-purple-300 hover:text-white" 
+                        className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl font-semibold text-xs transition-all border border-purple-500/30 focus-ring touch-target ${
+                          doc.status === "READY"
+                            ? "bg-purple-500/10 hover:bg-purple-500/20 text-purple-300 hover:text-white active:scale-[0.98]"
                             : "bg-white/5 text-gray-500 pointer-events-none border-transparent"
                         }`}
                         title="AI Practice Quiz & Flashcards"
+                        aria-label={`Open AI Quiz for ${doc.name}`}
                       >
-                        <GraduationCap className="w-4 h-4" />
+                        <GraduationCap className="w-3.5 h-3.5" />
                         <span>Quiz</span>
                       </Link>
                     </div>
-                  </div>
+                  </motion.div>
                 ))}
-              </div>
+              </motion.div>
             ) : debouncedSearchQuery && statusFilter !== "ALL" ? (
-              /* Empty State: Search + Status Filter */
-              <div className="glass p-12 rounded-2xl border border-white/10 text-center flex flex-col items-center justify-center">
+              /* Contextual Empty State: Search + Filter */
+              <div className="glass-card p-12 rounded-3xl border border-white/10 text-center flex flex-col items-center justify-center">
                 <div className="w-14 h-14 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center text-gray-400 mb-4">
-                  <Search className="w-7 h-7 text-gray-400" />
+                  <Search className="w-7 h-7" />
                 </div>
-                <h3 className="text-lg font-bold text-white mb-1">No matching documents</h3>
-                <p className="text-sm text-gray-400 max-w-sm mb-6">
-                  No documents found matching &ldquo;<span className="text-brand-300 font-medium">{debouncedSearchQuery}</span>&rdquo; with status <span className="text-white font-medium">{statusFilter}</span>.
+                <h3 className="text-lg font-bold text-white mb-1 font-heading">
+                  No matching documents
+                </h3>
+                <p className="text-xs sm:text-sm text-gray-400 max-w-sm mb-6 leading-relaxed">
+                  No documents found matching &ldquo;
+                  <span className="text-brand-300 font-medium">{debouncedSearchQuery}</span>&rdquo; with
+                  status <span className="text-white font-medium">{statusFilter}</span>.
                 </p>
                 <div className="flex flex-wrap items-center justify-center gap-3">
-                  <button
-                    type="button"
-                    onClick={() => setSearchQuery("")}
-                    className="px-4 py-2 bg-white/10 hover:bg-white/20 text-white rounded-xl text-sm font-medium transition-all"
-                  >
+                  <Button variant="outline" size="sm" onClick={() => setSearchQuery("")}>
                     Clear Search
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setStatusFilter("ALL")}
-                    className="px-4 py-2 bg-brand-600 hover:bg-brand-500 text-white rounded-xl text-sm font-medium transition-all"
-                  >
+                  </Button>
+                  <Button variant="primary" size="sm" onClick={() => setStatusFilter("ALL")}>
                     Show All Statuses
-                  </button>
+                  </Button>
                 </div>
               </div>
             ) : debouncedSearchQuery ? (
-              /* Empty State: Search Only */
-              <div className="glass p-12 rounded-2xl border border-white/10 text-center flex flex-col items-center justify-center">
+              /* Contextual Empty State: Search */
+              <div className="glass-card p-12 rounded-3xl border border-white/10 text-center flex flex-col items-center justify-center">
                 <div className="w-14 h-14 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center text-gray-400 mb-4">
-                  <Search className="w-7 h-7 text-gray-400" />
+                  <Search className="w-7 h-7" />
                 </div>
-                <h3 className="text-lg font-bold text-white mb-1">No documents found</h3>
-                <p className="text-sm text-gray-400 max-w-sm mb-6">
-                  No documents matched &ldquo;<span className="text-brand-300 font-medium">{debouncedSearchQuery}</span>&rdquo;. Check your spelling or try another keyword.
+                <h3 className="text-lg font-bold text-white mb-1 font-heading">
+                  No documents found
+                </h3>
+                <p className="text-xs sm:text-sm text-gray-400 max-w-sm mb-6 leading-relaxed">
+                  No documents matched &ldquo;
+                  <span className="text-brand-300 font-medium">{debouncedSearchQuery}</span>&rdquo;. Check
+                  spelling or try another keyword.
                 </p>
-                <button
-                  type="button"
-                  onClick={() => setSearchQuery("")}
-                  className="px-4 py-2 bg-brand-600 hover:bg-brand-500 text-white rounded-xl text-sm font-medium transition-all"
-                >
+                <Button variant="primary" size="sm" onClick={() => setSearchQuery("")}>
                   Clear Search
-                </button>
+                </Button>
               </div>
             ) : statusFilter !== "ALL" ? (
-              /* Empty State: Status Filter Only */
-              <div className="glass p-12 rounded-2xl border border-white/10 text-center flex flex-col items-center justify-center">
+              /* Contextual Empty State: Status Filter */
+              <div className="glass-card p-12 rounded-3xl border border-white/10 text-center flex flex-col items-center justify-center">
                 <div className="w-14 h-14 rounded-2xl bg-brand-500/10 text-brand-400 flex items-center justify-center mb-4">
                   <Filter className="w-7 h-7" />
                 </div>
-                <h3 className="text-lg font-bold text-white mb-1">
+                <h3 className="text-lg font-bold text-white mb-1 font-heading">
                   No {statusFilter.toLowerCase()} documents
                 </h3>
-                <p className="text-sm text-gray-400 max-w-sm mb-6">
-                  You do not have any documents with status <span className="text-white font-medium">{statusFilter}</span> right now.
+                <p className="text-xs sm:text-sm text-gray-400 max-w-sm mb-6 leading-relaxed">
+                  You do not have any documents with status{" "}
+                  <span className="text-white font-medium">{statusFilter}</span> right now.
                 </p>
-                <button
-                  type="button"
-                  onClick={() => setStatusFilter("ALL")}
-                  className="px-4 py-2 bg-brand-600 hover:bg-brand-500 text-white rounded-xl text-sm font-medium transition-all"
-                >
+                <Button variant="primary" size="sm" onClick={() => setStatusFilter("ALL")}>
                   Show All Documents
-                </button>
+                </Button>
               </div>
             ) : (
-              /* Empty State: No Documents Uploaded */
-              <div className="glass p-12 rounded-2xl border border-white/10 text-center flex flex-col items-center justify-center">
-                <div className="w-14 h-14 rounded-2xl bg-brand-500/10 text-brand-400 flex items-center justify-center mb-4">
-                  <FileText className="w-7 h-7" />
+              /* Clean Empty State: No Documents */
+              <div className="glass-card p-12 rounded-3xl border border-white/10 text-center flex flex-col items-center justify-center">
+                <div className="w-16 h-16 rounded-2xl bg-brand-500/10 text-brand-400 flex items-center justify-center mb-4">
+                  <FileText className="w-8 h-8" />
                 </div>
-                <h3 className="text-lg font-bold text-white mb-1">No documents uploaded yet</h3>
-                <p className="text-sm text-gray-400 max-w-sm">
+                <h3 className="text-lg font-bold text-white mb-1 font-heading">
+                  No documents uploaded yet
+                </h3>
+                <p className="text-xs sm:text-sm text-gray-400 max-w-sm leading-relaxed">
                   Upload your first PDF document above to start interacting with ThinkIT AI.
                 </p>
               </div>
             )}
-          </motion.div>
+          </div>
         </div>
       </main>
     </div>
