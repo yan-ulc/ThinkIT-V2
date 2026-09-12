@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { User, Loader2, CreditCard, ShieldCheck } from "lucide-react";
+import { User, Loader2, CreditCard, ShieldCheck, Palette } from "lucide-react";
 import { motion } from "framer-motion";
 import { fetchApi } from "@/lib/api";
 import { AppSidebar } from "@/components/layout/AppSidebar";
@@ -9,6 +9,7 @@ import { AppHeader } from "@/components/layout/AppHeader";
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
 import { Card, CardHeader, CardTitle } from "@/components/ui/Card";
+import { ThemeSelector } from "@/components/theme/ThemeSelector";
 import { fadeIn } from "@/lib/animations";
 
 interface UserProfile {
@@ -38,35 +39,38 @@ export default function ProfilePage() {
   }, []);
 
   const handleUpgrade = async () => {
-    setIsProcessingPayment(true);
     try {
-      alert(
-        "Midtrans payment gateway integration is currently in Sandbox mode. Your API keys are not fully configured yet."
-      );
+      setIsProcessingPayment(true);
+      const res = await fetchApi("/payments/create-transaction/", {
+        method: "POST",
+        body: JSON.stringify({ plan: "premium" }),
+      });
+      if (res.data?.redirect_url) {
+        window.location.href = res.data.redirect_url;
+      }
     } catch (err) {
-      console.error(err);
+      console.error("Payment initiation failed", err);
     } finally {
       setIsProcessingPayment(false);
     }
   };
 
   return (
-    <div className="flex h-screen overflow-hidden bg-background">
+    <div className="flex h-screen bg-transparent overflow-hidden">
       {/* Reusable Desktop Sidebar */}
       <AppSidebar />
 
       {/* Main Content Area */}
-      <main className="flex-1 flex flex-col overflow-y-auto relative z-10">
-        {/* Reusable Responsive App Header with Mobile Hamburger */}
+      <div className="flex-1 flex flex-col min-w-0 overflow-y-auto">
         <AppHeader
-          title="User Profile"
-          subtitle="Manage your personal information and subscription"
+          title="Account & Settings"
+          subtitle="Manage your profile credentials, billing tier, and appearance themes"
         />
 
-        <div className="p-5 md:p-8 max-w-4xl mx-auto w-full flex-1">
+        <div className="p-5 md:p-8 max-w-4xl mx-auto w-full">
           {isLoading ? (
-            <div className="flex justify-center items-center h-64">
-              <Loader2 className="w-10 h-10 animate-spin text-brand-500" />
+            <div className="flex items-center justify-center p-24">
+              <Loader2 className="w-8 h-8 animate-spin text-brand-400" />
             </div>
           ) : user ? (
             <motion.div
@@ -75,37 +79,62 @@ export default function ProfilePage() {
               animate="visible"
               className="space-y-6"
             >
-              {/* Profile Card Header */}
-              <div className="glass-card p-6 sm:p-8 rounded-3xl border border-white/10 flex flex-col sm:flex-row items-center sm:items-start gap-6 text-center sm:text-left">
-                <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-2xl bg-brand-500/20 border-2 border-brand-500/30 flex items-center justify-center text-brand-400 shrink-0 shadow-lg shadow-brand-500/20">
-                  <User className="w-10 h-10 sm:w-12 sm:h-12" />
-                </div>
-                <div className="min-w-0">
-                  <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2 mb-1">
-                    <h2 className="text-xl sm:text-3xl font-bold text-white font-heading truncate">
-                      {user.name}
-                    </h2>
-                    <Badge variant="brand" size="sm">Active Account</Badge>
+              {/* Profile Card */}
+              <Card variant="glass" className="p-6 sm:p-8">
+                <div className="flex flex-col sm:flex-row items-center sm:items-start gap-5 text-center sm:text-left">
+                  <div className="w-20 h-20 rounded-2xl bg-brand-500/20 border border-brand-500/40 flex items-center justify-center text-brand-300 font-bold text-2xl shadow-inner shadow-brand-500/20">
+                    {user.name ? user.name[0].toUpperCase() : <User className="w-8 h-8" />}
                   </div>
-                  <p className="text-sm text-gray-400 truncate mb-3">{user.email}</p>
-                  <p className="text-xs text-gray-500">
-                    Member since {new Date(user.created_at).toLocaleDateString("id-ID", { month: "long", year: "numeric" })}
-                  </p>
-                </div>
-              </div>
 
-              {/* Status & Plan Grid */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {/* Account Status Card */}
-                <Card variant="glass-card" className="p-6 sm:p-8 flex flex-col justify-between">
+                  <div className="flex-1 min-w-0">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                      <h2 className="text-xl font-bold text-white font-heading">
+                        {user.name || "ThinkIT User"}
+                      </h2>
+                      <Badge variant="ready" size="sm" dot>
+                        Active Account
+                      </Badge>
+                    </div>
+                    <p className="text-sm text-gray-400 mt-1">{user.email}</p>
+                    <p className="text-xs text-gray-400 mt-3 flex items-center justify-center sm:justify-start gap-1.5">
+                      <span>Joined {new Date(user.created_at).toLocaleDateString()}</span>
+                    </p>
+                  </div>
+                </div>
+              </Card>
+
+              {/* Theme & Appearance Customization */}
+              <Card variant="glass" className="p-6 sm:p-8">
+                <div className="flex items-center gap-3 mb-5">
+                  <div className="p-2.5 rounded-xl bg-brand-500/10 text-brand-400">
+                    <Palette className="w-5 h-5" />
+                  </div>
                   <div>
-                    <CardHeader className="mb-6">
+                    <h3 className="font-semibold text-lg text-white font-heading">
+                      Interface Theme & Appearance
+                    </h3>
+                    <p className="text-xs text-gray-400 mt-0.5">
+                      Personalize your workspace palette and neon glass accents
+                    </p>
+                  </div>
+                </div>
+
+                <ThemeSelector variant="inline" />
+              </Card>
+
+              {/* Settings & Billing Grid */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {/* Subscription Tier Info */}
+                <Card variant="glass" className="p-6 sm:p-8 flex flex-col justify-between">
+                  <div>
+                    <CardHeader className="mb-4">
                       <CardTitle className="flex items-center gap-2.5 text-lg sm:text-xl">
-                        <ShieldCheck className="w-5 h-5 text-brand-400" />
-                        <span>Account Status</span>
+                        <ShieldCheck className="w-5 h-5 text-emerald-400" />
+                        <span>Workspace Quotas</span>
                       </CardTitle>
                     </CardHeader>
-                    <div className="space-y-4 text-sm">
+
+                    <div className="space-y-3.5 text-xs sm:text-sm">
                       <div className="flex justify-between items-center pb-3.5 border-b border-white/5">
                         <span className="text-gray-400">Current Plan</span>
                         <Badge variant="brand" size="sm">Free Tier</Badge>
@@ -159,7 +188,7 @@ export default function ProfilePage() {
             </div>
           )}
         </div>
-      </main>
+      </div>
     </div>
   );
 }

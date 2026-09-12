@@ -3,12 +3,15 @@
 import React from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { Brain, FileText, GraduationCap, LogOut, User } from "lucide-react";
+import { Brain, FileText, GraduationCap, LogOut, User, Palette } from "lucide-react";
 import { fetchApi } from "@/lib/api";
+import { useTheme } from "@/context/ThemeContext";
+import { ThemeSelector } from "@/components/theme/ThemeSelector";
 
 export const AppSidebar: React.FC = () => {
   const pathname = usePathname();
   const router = useRouter();
+  const { currentThemeConfig } = useTheme();
 
   const handleLogout = async () => {
     try {
@@ -73,8 +76,19 @@ export const AppSidebar: React.FC = () => {
         })}
       </nav>
 
+      {/* Theme Quick Switcher */}
+      <div className="px-4 py-3 border-t border-white/5 flex items-center justify-between">
+        <div className="flex items-center gap-2 text-xs text-gray-400 min-w-0 pr-2">
+          <Palette className="w-3.5 h-3.5 text-brand-400 shrink-0" />
+          <span className="truncate text-[11px] font-medium text-gray-300">
+            {currentThemeConfig.name}
+          </span>
+        </div>
+        <ThemeSelector />
+      </div>
+
       {/* Logout Action */}
-      <div className="p-4 mt-auto border-t border-white/5">
+      <div className="p-4 border-t border-white/5">
         <button
           type="button"
           onClick={handleLogout}

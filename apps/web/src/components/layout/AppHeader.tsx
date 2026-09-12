@@ -3,6 +3,7 @@
 import React, { useState } from "react";
 import { Menu } from "lucide-react";
 import { MobileNav } from "./MobileNav";
+import { ThemeSelector } from "@/components/theme/ThemeSelector";
 
 export interface AppHeaderProps {
   title: React.ReactNode;
@@ -39,7 +40,10 @@ export const AppHeader: React.FC<AppHeaderProps> = ({ title, subtitle, actions }
           </div>
         </div>
 
-        {actions && <div className="flex items-center gap-2 shrink-0">{actions}</div>}
+        <div className="flex items-center gap-2.5 shrink-0">
+          <ThemeSelector />
+          {actions}
+        </div>
       </header>
 
       {/* Mobile Drawer */}

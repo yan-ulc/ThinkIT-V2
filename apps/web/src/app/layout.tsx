@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { Inter, Outfit } from "next/font/google";
+import { ThemeProvider } from "@/context/ThemeContext";
 import "./globals.css";
 
 const inter = Inter({
@@ -53,15 +54,36 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className={`${inter.variable} ${outfit.variable} h-full antialiased dark`}>
+    <html
+      lang="en"
+      className={`${inter.variable} ${outfit.variable} h-full antialiased dark`}
+      suppressHydrationWarning
+    >
+      <head>
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              try {
+                const savedTheme = localStorage.getItem('thinkit_theme') || 'midnight-obsidian';
+                document.documentElement.setAttribute('data-theme', savedTheme);
+              } catch (e) {}
+            `,
+          }}
+        />
+      </head>
       <body className="min-h-full flex flex-col bg-gradient-premium text-foreground relative overflow-x-hidden">
-        {/* Background Blobs for Visual Effect */}
-        <div className="animated-blob bg-brand-600/20 w-96 h-96 rounded-full top-0 left-0 -translate-x-1/2 -translate-y-1/2" />
-        <div className="animated-blob bg-blue-600/20 w-96 h-96 rounded-full bottom-0 right-0 translate-x-1/2 translate-y-1/2" style={{ animationDelay: '2s' }} />
-        
-        <main className="flex-1 relative z-10 flex flex-col">
-          {children}
-        </main>
+        <ThemeProvider>
+          {/* Background Blobs for Visual Effect */}
+          <div className="animated-blob bg-brand-600/20 w-96 h-96 rounded-full top-0 left-0 -translate-x-1/2 -translate-y-1/2" />
+          <div
+            className="animated-blob bg-brand-400/15 w-96 h-96 rounded-full bottom-0 right-0 translate-x-1/2 translate-y-1/2"
+            style={{ animationDelay: "2s" }}
+          />
+
+          <main className="flex-1 relative z-10 flex flex-col">
+            {children}
+          </main>
+        </ThemeProvider>
       </body>
     </html>
   );

@@ -1,37 +1,169 @@
 @import "tailwindcss";
 
 @theme {
-  --color-brand-50: #f5f3ff;
-  --color-brand-100: #ede9fe;
-  --color-brand-200: #ddd6fe;
-  --color-brand-300: #c4b5fd;
-  --color-brand-400: #a78bfa;
-  --color-brand-500: #8b5cf6;
-  --color-brand-600: #7c3aed;
-  --color-brand-700: #6d28d9;
-  --color-brand-800: #5b21b6;
-  --color-brand-900: #4c1d95;
-  --color-brand-950: #2e1065;
+  --color-brand-50: var(--brand-50);
+  --color-brand-100: var(--brand-100);
+  --color-brand-200: var(--brand-200);
+  --color-brand-300: var(--brand-300);
+  --color-brand-400: var(--brand-400);
+  --color-brand-500: var(--brand-500);
+  --color-brand-600: var(--brand-600);
+  --color-brand-700: var(--brand-700);
+  --color-brand-800: var(--brand-800);
+  --color-brand-900: var(--brand-900);
+  --color-brand-950: var(--brand-950);
   
   --color-background: var(--background);
   --color-foreground: var(--foreground);
+  --color-card: var(--card-bg);
+  --color-card-border: var(--card-border);
+  --color-glow: var(--theme-glow);
+
   --font-sans: var(--font-inter), -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   --font-display: var(--font-outfit), var(--font-inter), sans-serif;
 }
 
-:root {
+/* ==========================================================================
+   THEME PALETTES (DATA-THEME)
+   ========================================================================== */
+
+/* 1. Midnight Obsidian (Default) */
+:root,
+[data-theme="midnight-obsidian"] {
   --background: #09090b;
   --foreground: #fafafa;
-  --card-bg: rgba(15, 23, 42, 0.6);
+  --brand-50: #f5f3ff;
+  --brand-100: #ede9fe;
+  --brand-200: #ddd6fe;
+  --brand-300: #c4b5fd;
+  --brand-400: #a78bfa;
+  --brand-500: #8b5cf6;
+  --brand-600: #7c3aed;
+  --brand-700: #6d28d9;
+  --brand-800: #5b21b6;
+  --brand-900: #4c1d95;
+  --brand-950: #2e1065;
+  --card-bg: rgba(15, 23, 42, 0.65);
   --card-border: rgba(255, 255, 255, 0.08);
+  --theme-glow: rgba(139, 92, 246, 0.35);
+  --theme-glow-bg: #1e1b4b;
 }
 
+/* 2. Cyberpunk Neon */
+[data-theme="cyberpunk"] {
+  --background: #0c0c1d;
+  --foreground: #fdf4ff;
+  --brand-50: #fdf2f8;
+  --brand-100: #fce7f3;
+  --brand-200: #fbcfe8;
+  --brand-300: #f472b6;
+  --brand-400: #ff36d9;
+  --brand-500: #ff00c8;
+  --brand-600: #db00ad;
+  --brand-700: #b3008d;
+  --brand-800: #8a006c;
+  --brand-900: #6b0054;
+  --brand-950: #3d0030;
+  --card-bg: rgba(20, 15, 38, 0.7);
+  --card-border: rgba(255, 0, 200, 0.15);
+  --theme-glow: rgba(255, 0, 200, 0.35);
+  --theme-glow-bg: #3d0030;
+}
+
+/* 3. Cyber Emerald (Supabase-inspired) */
+[data-theme="cyber-emerald"] {
+  --background: #09140f;
+  --foreground: #f0fdf4;
+  --brand-50: #f0fdf4;
+  --brand-100: #dcfce7;
+  --brand-200: #bbf7d0;
+  --brand-300: #86efac;
+  --brand-400: #4ade80;
+  --brand-500: #10b981;
+  --brand-600: #059669;
+  --brand-700: #047857;
+  --brand-800: #065f46;
+  --brand-900: #064e3b;
+  --brand-950: #022c22;
+  --card-bg: rgba(13, 28, 20, 0.7);
+  --card-border: rgba(16, 185, 129, 0.15);
+  --theme-glow: rgba(16, 185, 129, 0.35);
+  --theme-glow-bg: #064e3b;
+}
+
+/* 4. Catppuccin Mocha */
+[data-theme="catppuccin"] {
+  --background: #181825;
+  --foreground: #cdd6f4;
+  --brand-50: #faf5ff;
+  --brand-100: #f3e8ff;
+  --brand-200: #e9d5ff;
+  --brand-300: #d8b4fe;
+  --brand-400: #cba6f7;
+  --brand-500: #8839ef;
+  --brand-600: #772be2;
+  --brand-700: #651fc8;
+  --brand-800: #5318a6;
+  --brand-900: #431484;
+  --brand-950: #280a54;
+  --card-bg: rgba(30, 30, 46, 0.75);
+  --card-border: rgba(203, 166, 247, 0.15);
+  --theme-glow: rgba(203, 166, 247, 0.35);
+  --theme-glow-bg: #313244;
+}
+
+/* 5. Solar Dusk */
+[data-theme="solar-dusk"] {
+  --background: #171412;
+  --foreground: #fff7ed;
+  --brand-50: #fff7ed;
+  --brand-100: #ffedd5;
+  --brand-200: #fed7aa;
+  --brand-300: #fdba74;
+  --brand-400: #fb923c;
+  --brand-500: #f97316;
+  --brand-600: #ea580c;
+  --brand-700: #c2410c;
+  --brand-800: #9a3412;
+  --brand-900: #7c2d12;
+  --brand-950: #431407;
+  --card-bg: rgba(32, 23, 18, 0.75);
+  --card-border: rgba(249, 115, 22, 0.15);
+  --theme-glow: rgba(249, 115, 22, 0.35);
+  --theme-glow-bg: #431407;
+}
+
+/* 6. Oceanic Abyss */
+[data-theme="oceanic-abyss"] {
+  --background: #071324;
+  --foreground: #f0f9ff;
+  --brand-50: #f0f9ff;
+  --brand-100: #e0f2fe;
+  --brand-200: #bae6fd;
+  --brand-300: #7dd3fc;
+  --brand-400: #38bdf8;
+  --brand-500: #0284c7;
+  --brand-600: #0369a1;
+  --brand-700: #075985;
+  --brand-800: #0c4a6e;
+  --brand-900: #082f49;
+  --brand-950: #041c2c;
+  --card-bg: rgba(11, 26, 48, 0.75);
+  --card-border: rgba(56, 189, 248, 0.15);
+  --theme-glow: rgba(56, 189, 248, 0.35);
+  --theme-glow-bg: #082f49;
+}
+
+/* ==========================================================================
+   BASE & TYPOGRAPHY
+   ========================================================================== */
 body {
   background-color: var(--background);
   color: var(--foreground);
   font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  transition: background-color 0.3s ease, color 0.3s ease;
 }
 
 /* Typography Headings */
@@ -44,21 +176,21 @@ h1, h2, h3, .font-heading {
   background: rgba(255, 255, 255, 0.04);
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  border: 1px solid var(--card-border);
 }
 
 .glass-dark {
-  background: rgba(15, 23, 42, 0.65);
+  background: var(--card-bg);
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  border: 1px solid var(--card-border);
 }
 
 .glass-card {
   background: linear-gradient(135deg, rgba(255, 255, 255, 0.05) 0%, rgba(255, 255, 255, 0.01) 100%);
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  border: 1px solid var(--card-border);
   box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
 }
 
@@ -67,21 +199,21 @@ h1, h2, h3, .font-heading {
 }
 
 .glass-hover:hover {
-  border-color: rgba(139, 92, 246, 0.4);
+  border-color: var(--brand-400);
   background: rgba(255, 255, 255, 0.06);
-  box-shadow: 0 10px 30px -10px rgba(124, 58, 237, 0.2);
+  box-shadow: 0 10px 30px -10px var(--theme-glow);
 }
 
 /* Gradients */
 .text-gradient {
-  background: linear-gradient(135deg, #c4b5fd 0%, #a78bfa 50%, #60a5fa 100%);
+  background: linear-gradient(135deg, var(--brand-300) 0%, var(--brand-400) 50%, var(--brand-500) 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
 }
 
 .bg-gradient-premium {
-  background: radial-gradient(circle at 50% 0%, #1e1b4b 0%, #09090b 70%);
+  background: radial-gradient(circle at 50% 0%, var(--theme-glow-bg) 0%, var(--background) 70%);
 }
 
 /* Ambient Animated Blobs */
@@ -89,7 +221,7 @@ h1, h2, h3, .font-heading {
   position: absolute;
   filter: blur(90px);
   z-index: 0;
-  opacity: 0.45;
+  opacity: 0.35;
   animation: blob-bounce 14s infinite ease-in-out;
   pointer-events: none;
 }
@@ -127,7 +259,7 @@ h1, h2, h3, .font-heading {
 }
 .focus-ring:focus-visible {
   outline: none;
-  box-shadow: 0 0 0 2px #09090b, 0 0 0 4px rgba(167, 139, 250, 0.8);
+  box-shadow: 0 0 0 2px var(--background), 0 0 0 4px var(--brand-400);
 }
 
 /* Touch target minimum size helper */
@@ -145,19 +277,9 @@ h1, h2, h3, .font-heading {
   background: rgba(0, 0, 0, 0.2);
 }
 ::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.15);
+  background: var(--card-border);
   border-radius: 9999px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(255, 255, 255, 0.3);
+  background: var(--brand-500);
 }
-
-/* Hide scrollbar utility */
-.no-scrollbar::-webkit-scrollbar {
-  display: none;
-}
-.no-scrollbar {
-  -ms-overflow-style: none;
-  scrollbar-width: none;
-}
-

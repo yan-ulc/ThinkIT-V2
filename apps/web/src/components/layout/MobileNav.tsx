@@ -3,9 +3,10 @@
 import React, { useEffect } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { Brain, FileText, GraduationCap, LogOut, User, X } from "lucide-react";
+import { Brain, FileText, GraduationCap, LogOut, User, X, Check } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { fetchApi } from "@/lib/api";
+import { useTheme } from "@/context/ThemeContext";
 
 export interface MobileNavProps {
   isOpen: boolean;
@@ -15,6 +16,7 @@ export interface MobileNavProps {
 export const MobileNav: React.FC<MobileNavProps> = ({ isOpen, onClose }) => {
   const pathname = usePathname();
   const router = useRouter();
+  const { theme, setTheme, currentThemeConfig, themes } = useTheme();
 
   // Close nav on route change or escape key
   useEffect(() => {
@@ -48,20 +50,20 @@ export const MobileNav: React.FC<MobileNavProps> = ({ isOpen, onClose }) => {
 
   const navItems = [
     {
+      label: "Dashboard",
       href: "/dashboard",
-      label: "My Documents",
       icon: FileText,
       isActive: pathname === "/dashboard",
     },
     {
+      label: "Quizzes & Flashcards",
       href: "/quiz",
-      label: "Quiz & Flashcards",
       icon: GraduationCap,
       isActive: pathname.startsWith("/quiz"),
     },
     {
+      label: "Profile Settings",
       href: "/profile",
-      label: "User Profile",
       icon: User,
       isActive: pathname === "/profile",
     },
@@ -78,15 +80,12 @@ export const MobileNav: React.FC<MobileNavProps> = ({ isOpen, onClose }) => {
             exit={{ opacity: 0 }}
             transition={{ duration: 0.2 }}
             onClick={onClose}
-            className="fixed inset-0 bg-black/80 backdrop-blur-sm"
+            className="fixed inset-0 bg-black/70 backdrop-blur-sm"
             aria-hidden="true"
           />
 
-          {/* Drawer content */}
+          {/* Drawer Content */}
           <motion.div
-            role="dialog"
-            aria-modal="true"
-            aria-label="Mobile Navigation Drawer"
             initial={{ x: "-100%" }}
             animate={{ x: 0 }}
             exit={{ x: "-100%" }}
@@ -136,6 +135,32 @@ export const MobileNav: React.FC<MobileNavProps> = ({ isOpen, onClose }) => {
                 );
               })}
             </nav>
+
+            {/* Theme Selector Section */}
+            <div className="px-4 py-3 border-t border-white/10">
+              <div className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider mb-2.5 flex items-center justify-between">
+                <span>Theme</span>
+                <span className="text-brand-400 font-medium text-[11px]">{currentThemeConfig.name}</span>
+              </div>
+              <div className="grid grid-cols-6 gap-2">
+                {themes.map((t) => (
+                  <button
+                    key={t.id}
+                    type="button"
+                    onClick={() => setTheme(t.id)}
+                    aria-label={`Select ${t.name} theme`}
+                    className={`w-8 h-8 rounded-full border flex items-center justify-center transition-all ${
+                      theme === t.id
+                        ? "border-white ring-2 ring-brand-500 scale-110 shadow-md"
+                        : "border-white/20 hover:border-white/60 opacity-80 hover:opacity-100"
+                    }`}
+                    style={{ backgroundColor: t.previewColor }}
+                  >
+                    {theme === t.id && <Check className="w-3.5 h-3.5 text-white drop-shadow" />}
+                  </button>
+                ))}
+              </div>
+            </div>
 
             {/* Logout button */}
             <div className="p-4 border-t border-white/10 mt-auto">
