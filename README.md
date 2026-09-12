@@ -1228,11 +1228,26 @@ Tidak semua hal ditest — prioritas berdasarkan risiko dan value.
 
 #### 🎯 Sprint 9 — Full UI Polish, Design System Consistency & Theme System
 * **Milestone:** [Milestone 9: UI Polish & Design System Consistency](https://github.com/yan-ulc/ThinkIT-V2/milestone/9)
-* **Issue:** [Issue #20 - [Sprint 9] Full UI Polish, Design System Consistency, and Theme System](https://github.com/yan-ulc/ThinkIT-V2/issues/20) *(Open)*
-- [ ] Terapkan konsistensi theme system (vibrant glassmorphic dark mode + custom palette)
-- [ ] Framer Motion micro-animations untuk seluruh interaksi & transisi halaman
-- [ ] Responsiveness audit 100% di perangkat Mobile, Tablet, dan Desktop
-- [ ] Final production readiness checklist & release audit
+* **Umbrella Tracking Issue:** [Issue #20 - [Sprint 9] Full UI Polish, Design System Consistency, and Theme System](https://github.com/yan-ulc/ThinkIT-V2/issues/20) *(Open)*
+
+* **Issue:** [Issue #62 - [Sprint 9] Design System Standardization, Typography, and Reusable Glassmorphic UI Components](https://github.com/yan-ulc/ThinkIT-V2/issues/62) *(Open)*
+  - [ ] Standardisasi CSS custom properties & HSL dark surface background palette di `globals.css`
+  - [ ] Konsistensi tipografi Google Fonts Inter & Outfit untuk seluruh skala teks
+  - [ ] Pembuatan shared glassmorphic component primitives (`Button`, `Card`, `Input`, `Badge`, `Dialog`)
+  - [ ] Refactor seluruh view (`/`, `/login`, `/register`, `/dashboard`, `/chat/[id]`, `/quiz`, `/quiz/[id]`, `/profile`)
+
+* **Issue:** [Issue #63 - [Sprint 9] Framer Motion Route Transitions, Dynamic Micro-Animations, and Feedback Effects](https://github.com/yan-ulc/ThinkIT-V2/issues/63) *(Open)*
+  - [ ] Framer Motion route & page transitions (`template.tsx` / `AnimatePresence`)
+  - [ ] Micro-interactions interaktif pada document drag-and-drop upload zone
+  - [ ] Hover lift, spring physics, dan glow border feedback pada card & modal
+  - [ ] Auto-scroll halus dan streaming cursor pulse pada AI chat stream
+  - [ ] Dukungan aksesibilitas penuh `prefers-reduced-motion`
+
+* **Issue:** [Issue #64 - [Sprint 9] Responsive Multi-Device Audit, Mobile Navigation, Accessibility (a11y), and Pre-Release Hardening](https://github.com/yan-ulc/ThinkIT-V2/issues/64) *(Open)*
+  - [ ] Audit responsivitas multi-device 100% (Mobile, Tablet, Desktop) tanpa horizontal overflow
+  - [ ] Implementasi Mobile Slide-Over Navigation Drawer dengan touch target $\ge$ 44x44px
+  - [ ] Kepatuhan aksesibilitas WCAG 2.1 AA (ARIA roles/labels, keyboard navigation focus rings)
+  - [ ] Pre-release hardening: Fallback error screens (`error.tsx`, `not-found.tsx`) dan dynamic SEO metadata
 
 ---
 
